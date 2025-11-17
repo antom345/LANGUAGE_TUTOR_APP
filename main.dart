@@ -1,11 +1,12 @@
 import 'dart:convert';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const LanguageTutorApp());
 }
+
+// ============ ROOT APP ============
 
 class LanguageTutorApp extends StatelessWidget {
   const LanguageTutorApp({super.key});
@@ -14,373 +15,165 @@ class LanguageTutorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Language Tutor',
-      debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4B5BB5)),
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF4F4F7),
+        fontFamily: 'SF Pro Text',
       ),
-      home: const SetupPage(),
+      home: const SetupScreen(),
     );
   }
 }
 
-// --------------------- МОДЕЛИ -----------------------
-
-class ChatConfig {
-  final String language;
-  final String level;
-  final String topic;
-  final String userGender;
-  final String partnerGender;
-  final int? userAge;
-
-  const ChatConfig({
-    required this.language,
-    required this.level,
-    required this.topic,
-    required this.userGender,
-    required this.partnerGender,
-    this.userAge,
-  });
-}
+// ============ MODELS ============
 
 class ChatMessage {
-  final String sender;
+  final String role; // "user" или "assistant"
   final String text;
-  final bool isUser;
-  final bool isSystem;
+  final bool isCorrections; // отдельное сообщение с ошибками
 
   ChatMessage({
-    required this.sender,
+    required this.role,
     required this.text,
-    required this.isUser,
-    this.isSystem = false,
+    this.isCorrections = false,
   });
 }
 
-// --------------------- ЭКРАН НАСТРОЕК -----------------------
+// ============ SETUP SCREEN (шаги выбора) ============
 
-class SetupPage extends StatefulWidget {
-  const SetupPage({super.key});
+class SetupScreen extends StatefulWidget {
+  const SetupScreen({super.key});
 
   @override
-  State<SetupPage> createState() => _SetupPageState();
+  State<SetupScreen> createState() => _SetupScreenState();
 }
 
-class _SetupPageState extends State<SetupPage> {
+class _SetupScreenState extends State<SetupScreen> {
+  int _step = 0;
+
+  // шаг 1 — язык
   String _language = 'English';
+
+  // шаг 2 — уровень
   String _level = 'B1';
+
+  // шаг 3 — пользователь и собеседник
   String _userGender = 'unspecified';
+  int? _userAge;
   String _partnerGender = 'female';
-  final TextEditingController _ageController = TextEditingController();
+
+  // шаг 4 — тема
   final TextEditingController _topicController =
       TextEditingController(text: 'General conversation');
 
+  final List<String> _topicSuggestions = const [
+    'Daily life',
+    'Travel',
+    'Work & study',
+    'Relationships',
+    'Hobbies',
+    'Movies & series',
+    'Culture & society',
+  ];
+
   @override
   void dispose() {
-    _ageController.dispose();
     _topicController.dispose();
     super.dispose();
   }
 
-  String _languageLabel(String lang) {
-    switch (lang) {
-      case 'English':
-        return 'English';
-      case 'German':
-        return 'German';
-      case 'French':
-        return 'French';
-      case 'Spanish':
-        return 'Spanish';
-      case 'Italian':
-        return 'Italian';
-      case 'Korean':
-        return 'Korean';
-      default:
-        return lang;
-    }
+  void _nextStep() {
+    setState(() {
+      if (_step < 3) {
+        _step++;
+      } else {
+        _openChat();
+      }
+    });
   }
 
-  void _startChat() {
-    int? age;
-    if (_ageController.text.trim().isNotEmpty) {
-      final parsed = int.tryParse(_ageController.text.trim());
-      if (parsed != null && parsed > 0 && parsed < 120) {
-        age = parsed;
-      }
-    }
+  void _prevStep() {
+    setState(() {
+      if (_step > 0) _step--;
+    });
+  }
 
+  void _openChat() {
     final topic = _topicController.text.trim().isEmpty
         ? 'General conversation'
         : _topicController.text.trim();
 
-    final config = ChatConfig(
-      language: _language,
-      level: _level,
-      topic: topic,
-      userGender: _userGender,
-      partnerGender: _partnerGender,
-      userAge: age,
-    );
-
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChatPage(config: config),
+        builder: (_) => ChatScreen(
+          language: _language,
+          level: _level,
+          topic: topic,
+          userGender: _userGender,
+          userAge: _userAge,
+          partnerGender: _partnerGender,
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final steps = [
+      _buildLanguageStep(),
+      _buildLevelStep(),
+      _buildProfileStep(),
+      _buildTopicStep(),
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Language Tutor — Setup'),
+        title: const Text('Language Tutor setup'),
         centerTitle: true,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Язык
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Language',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _language,
-                          isExpanded: true,
-                          onChanged: (v) => setState(() => _language = v!),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'English',
-                              child: Text('English'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'German',
-                              child: Text('German'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'French',
-                              child: Text('French'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Spanish',
-                              child: Text('Spanish'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Italian',
-                              child: Text('Italian'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Korean',
-                              child: Text('Korean'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+              // индикатор шагов
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  steps.length,
+                  (index) => Container(
+                    width: 12,
+                    height: 12,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: index == _step
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey.shade300,
+                    ),
                   ),
                 ),
               ),
-
-              // Уровень
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Your level',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
-                            .map(
-                              (lvl) => ChoiceChip(
-                                label: Text(lvl),
-                                selected: _level == lvl,
-                                onSelected: (_) =>
-                                    setState(() => _level = lvl),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Пол, возраст, собеседник
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Your profile',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('Your gender:'),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: const Text('Not specified'),
-                              value: 'unspecified',
-                              groupValue: _userGender,
-                              onChanged: (v) =>
-                                  setState(() => _userGender = v!),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: const Text('Male'),
-                              value: 'male',
-                              groupValue: _userGender,
-                              onChanged: (v) =>
-                                  setState(() => _userGender = v!),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: const Text('Female'),
-                              value: 'female',
-                              groupValue: _userGender,
-                              onChanged: (v) =>
-                                  setState(() => _userGender = v!),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _ageController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Your age (optional)',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Who do you want to talk to?',
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: const Text('Woman'),
-                              value: 'female',
-                              groupValue: _partnerGender,
-                              onChanged: (v) =>
-                                  setState(() => _partnerGender = v!),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: const Text('Man'),
-                              value: 'male',
-                              groupValue: _partnerGender,
-                              onChanged: (v) =>
-                                  setState(() => _partnerGender = v!),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Тема
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Topic',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _topicController,
-                        decoration: const InputDecoration(
-                          hintText: 'Travel, university life, work, hobbies...',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _startChat,
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  label: Text('Start chat in ${_languageLabel(_language)}'),
-                ),
+              Expanded(child: steps[_step]),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (_step > 0)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _prevStep,
+                        child: const Text('Back'),
+                      ),
+                    ),
+                  if (_step > 0) const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _nextStep,
+                      child: Text(_step < steps.length - 1 ? 'Next' : 'Start chat'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -388,40 +181,272 @@ class _SetupPageState extends State<SetupPage> {
       ),
     );
   }
+
+  // ----- шаг 1: язык -----
+
+  Widget _buildLanguageStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Choose language',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 24),
+        _languageTile('English'),
+        _languageTile('German'),
+        _languageTile('French'),
+        _languageTile('Spanish'),
+        _languageTile('Italian'),
+        _languageTile('Korean'),
+      ],
+    );
+  }
+
+  Widget _languageTile(String lang) {
+    final selected = _language == lang;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(lang),
+      trailing: selected
+          ? Icon(Icons.check_circle,
+              color: Theme.of(context).colorScheme.primary)
+          : const Icon(Icons.circle_outlined),
+      onTap: () {
+        setState(() {
+          _language = lang;
+        });
+      },
+    );
+  }
+
+  // ----- шаг 2: уровень -----
+
+  Widget _buildLevelStep() {
+    const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Your language level',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 24),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: levels.map((lvl) {
+            final selected = _level == lvl;
+            return ChoiceChip(
+              label: Text(lvl),
+              selected: selected,
+              onSelected: (_) {
+                setState(() {
+                  _level = lvl;
+                });
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Choose approximately how confident you feel in this language. '
+          'The tutor will adapt to this level.',
+        ),
+      ],
+    );
+  }
+
+  // ----- шаг 3: профиль -----
+
+  Widget _buildProfileStep() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'About you',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+          const Text('Your gender'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Not important'),
+                selected: _userGender == 'unspecified',
+                onSelected: (_) {
+                  setState(() {
+                    _userGender = 'unspecified';
+                  });
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Male'),
+                selected: _userGender == 'male',
+                onSelected: (_) {
+                  setState(() {
+                    _userGender = 'male';
+                  });
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Female'),
+                selected: _userGender == 'female',
+                onSelected: (_) {
+                  setState(() {
+                    _userGender = 'female';
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Your age (optional)'),
+          const SizedBox(height: 8),
+          TextField(
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              hintText: 'e.g. 20',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              setState(() {
+                if (value.trim().isEmpty) {
+                  _userAge = null;
+                } else {
+                  _userAge = int.tryParse(value.trim());
+                }
+              });
+            },
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Who do you want to talk to?',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Woman'),
+                selected: _partnerGender == 'female',
+                onSelected: (_) {
+                  setState(() {
+                    _partnerGender = 'female';
+                  });
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Man'),
+                selected: _partnerGender == 'male',
+                onSelected: (_) {
+                  setState(() {
+                    _partnerGender = 'male';
+                  });
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----- шаг 4: тема -----
+
+  Widget _buildTopicStep() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Choose a topic',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _topicController,
+            decoration: const InputDecoration(
+              labelText: 'Topic',
+              hintText: 'For example: Travel, work, hobbies…',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Suggestions',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _topicSuggestions.map((t) {
+              final selected = _topicController.text.trim() == t;
+              return ChoiceChip(
+                label: Text(t),
+                selected: selected,
+                onSelected: (_) {
+                  setState(() {
+                    _topicController.text = t;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'You can type your own topic or tap one of the suggestions. '
+            'The tutor will start the conversation with a question related to this topic.',
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// --------------------- ЭКРАН ЧАТА -----------------------
+// ============ CHAT SCREEN ============
 
-class ChatPage extends StatefulWidget {
-  final ChatConfig config;
+class ChatScreen extends StatefulWidget {
+  final String language;
+  final String level;
+  final String topic;
+  final String userGender;
+  final int? userAge;
+  final String partnerGender;
 
-  const ChatPage({super.key, required this.config});
+  const ChatScreen({
+    super.key,
+    required this.language,
+    required this.level,
+    required this.topic,
+    required this.userGender,
+    required this.userAge,
+    required this.partnerGender,
+  });
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatPageState extends State<ChatPage> {
-  // Бекэнд
-  static const String backendBase = 'http://172.86.88.21:8000';
-  static const String chatEndpoint = '$backendBase/chat';
-  static const String translateEndpoint = '$backendBase/translate_word';
-
-  final TextEditingController _inputController = TextEditingController();
+class _ChatScreenState extends State<ChatScreen> {
   final List<ChatMessage> _messages = [];
-  final List<Map<String, String>> _history = [];
-
+  final TextEditingController _inputController = TextEditingController();
   bool _isSending = false;
 
-  String _partnerName = 'Tutor';
+  // прогресс по словам пользователя
+  int _userWordCount = 0;
+  int _currentLevel = 1;
+  final List<int> _levelTargets = [50, 150, 300, 500, 1000];
 
   @override
   void initState() {
     super.initState();
-    _partnerName = _guessPartnerName(
-      widget.config.language,
-      widget.config.partnerGender,
-    );
+    _startConversation();
   }
 
   @override
@@ -430,113 +455,89 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  String _guessPartnerName(String language, String partnerGender) {
-    final g = partnerGender.toLowerCase();
-    switch (language) {
-      case 'English':
-        return g == 'male' ? 'James' : 'Emily';
-      case 'German':
-        return g == 'male' ? 'Lukas' : 'Anna';
-      case 'French':
-        return g == 'male' ? 'Pierre' : 'Marie';
-      case 'Spanish':
-        return g == 'male' ? 'Carlos' : 'Sofia';
-      case 'Italian':
-        return g == 'male' ? 'Marco' : 'Giulia';
-      case 'Korean':
-        return g == 'male' ? 'Minjun' : 'Jisoo';
-      default:
-        return 'Tutor';
-    }
+  Future<void> _startConversation() async {
+    await _sendToBackend(initial: true);
   }
 
-  String _languageLabel() {
-    switch (widget.config.language) {
-      case 'English':
-        return 'English';
-      case 'German':
-        return 'German';
-      case 'French':
-        return 'French';
-      case 'Spanish':
-        return 'Spanish';
-      case 'Italian':
-        return 'Italian';
-      case 'Korean':
-        return 'Korean';
-      default:
-        return widget.config.language;
-    }
-  }
-
-  // ------------ Отправка сообщений ------------
-
-  Future<void> _sendMessage() async {
+  Future<void> _sendUserMessage() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _isSending) return;
 
     setState(() {
-      _isSending = true;
+      _messages.add(ChatMessage(role: 'user', text: text));
+      _userWordCount += text.split(RegExp(r'\s+')).length;
       _inputController.clear();
-      _messages.add(
-        ChatMessage(sender: 'You', text: text, isUser: true),
-      );
-      _history.add({'role': 'user', 'content': text});
+    });
+
+    _updateProgress();
+    await _sendToBackend(initial: false);
+  }
+
+  Future<void> _sendToBackend({required bool initial}) async {
+    setState(() {
+      _isSending = true;
     });
 
     try {
-      final body = {
-        'messages': _history,
-        'language': widget.config.language,
-        'topic': widget.config.topic,
-        'level': widget.config.level,
-        'user_gender': widget.config.userGender,
-        'partner_gender': widget.config.partnerGender,
-        'user_age': widget.config.userAge,
-      };
+      final uri = Uri.parse('http://172.86.88.21:8000/chat');
 
-      final response = await http.post(
-        Uri.parse(chatEndpoint),
+      final messagesPayload = initial
+          ? []
+          : _messages
+              .where((m) => !m.isCorrections) // в историю не отправляем сообщения с ошибками
+              .map((m) => {
+                    'role': m.role,
+                    'content': m.text,
+                  })
+              .toList();
+
+      final body = jsonEncode({
+        'messages': messagesPayload,
+        'language': widget.language,
+        'topic': widget.topic,
+        'level': widget.level,
+        'user_gender': widget.userGender,
+        'user_age': widget.userAge,
+        'partner_gender': widget.partnerGender,
+      });
+
+      final resp = await http.post(
+        uri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
+        body: body,
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final reply = data['reply'] as String? ?? 'Empty reply';
-        final partner =
-            data['partner_name'] as String? ?? _partnerName;
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final reply = data['reply'] as String? ?? '';
+        final correctionsText = data['corrections_text'] as String? ?? '';
 
         setState(() {
-          _partnerName = partner;
-          _messages.add(
-            ChatMessage(sender: _partnerName, text: reply, isUser: false),
-          );
-          _history.add({'role': 'assistant', 'content': reply});
+          if (reply.trim().isNotEmpty) {
+            _messages.add(ChatMessage(role: 'assistant', text: reply.trim()));
+          }
+          if (correctionsText.trim().isNotEmpty) {
+            _messages.add(ChatMessage(
+              role: 'assistant',
+              text: correctionsText.trim(),
+              isCorrections: true,
+            ));
+          }
         });
       } else {
         setState(() {
-          _messages.add(
-            ChatMessage(
-              sender: 'System',
-              text:
-                  'Server error: ${response.statusCode}. Please try again later.',
-              isUser: false,
-              isSystem: true,
-            ),
-          );
+          _messages.add(ChatMessage(
+            role: 'assistant',
+            text: 'System: error ${resp.statusCode} from server. Please try again.',
+          ));
         });
       }
     } catch (e) {
       setState(() {
-        _messages.add(
-          ChatMessage(
-            sender: 'System',
-            text: 'Connection error: $e',
-            isUser: false,
-            isSystem: true,
-          ),
-        );
+        _messages.add(ChatMessage(
+          role: 'assistant',
+          text: 'System: connection error: $e',
+        ));
       });
     } finally {
       setState(() {
@@ -545,333 +546,309 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // ------------ Перевод слова ------------
-
-  Future<void> _translateWord(String rawWord) async {
-    final word = rawWord.trim();
-    if (word.isEmpty) return;
-
-    try {
-      final response = await http.post(
-        Uri.parse(translateEndpoint),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'word': word,
-          'language': widget.config.language,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final translation = data['translation'] as String? ?? '';
-        final example = data['example'] as String? ?? '';
-
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (_) {
-            return AlertDialog(
-              title: Text(word),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (translation.isNotEmpty) ...[
-                    const Text(
-                      'Перевод:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(translation),
-                    const SizedBox(height: 8),
-                  ],
-                  if (example.isNotEmpty) ...[
-                    const Text(
-                      'Пример:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(example),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          },
+  void _updateProgress() {
+    while (_currentLevel <= _levelTargets.length &&
+        _userWordCount >= _levelTargets[_currentLevel - 1]) {
+      _currentLevel++;
+      if (_currentLevel > _levelTargets.length) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Amazing! You completed all 5 progress levels 🎉'),
+          ),
         );
       } else {
-        // можно тихо игнорировать или показать ошибку
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Great! You finished level ${_currentLevel - 1}. Level $_currentLevel unlocked!'),
+          ),
+        );
       }
-    } catch (_) {
-      // тоже можем проигнорировать
     }
   }
 
-  // ------------ UI ------------
+  double get _progressValue {
+    if (_currentLevel > _levelTargets.length) return 1.0;
+    final target = _levelTargets[_currentLevel - 1].toDouble();
+    return (_userWordCount / target).clamp(0.0, 1.0);
+  }
+
+  String get _progressLabel {
+    if (_currentLevel > _levelTargets.length) {
+      return 'All levels completed: $_userWordCount words';
+    }
+    return 'Level $_currentLevel · ${_userWordCount}/${_levelTargets[_currentLevel - 1]} words';
+  }
+
+  // ------ перевод слова по нажатию ------
+
+  Future<void> _onWordTap(String rawWord) async {
+    // убираем пунктуацию по краям
+    final word =
+        rawWord.replaceAll(RegExp(r"[^\p{Letter}']", unicode: true), '');
+    if (word.isEmpty) return;
+
+    try {
+      final uri = Uri.parse('http://172.86.88.21:8000/translate_word');
+
+      final body = jsonEncode({
+        'word': word,
+        'language': widget.language,
+        'target_language': 'Russian',
+      });
+
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (resp.statusCode != 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Translation error: ${resp.statusCode}')),
+        );
+        return;
+      }
+
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final translation = data['translation'] as String? ?? 'нет данных';
+      final example = data['example'] as String? ?? 'нет примера';
+
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(word),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Перевод: $translation'),
+              const SizedBox(height: 8),
+              Text(
+                'Пример:',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(example),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Translation error: $e')),
+      );
+    }
+  }
+
+  // ------ UI ------
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final partnerName = _detectPartnerNameFromMessages();
 
-return Scaffold(
-  appBar: AppBar(
-    title: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Chat with $_partnerName'),
-        Text(
-          '${_languageLabel()} · level ${widget.config.level}',
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withOpacity(0.6),
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Chat with $partnerName'),
+            Text(
+              '${widget.language} · level ${widget.level}',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: Colors.grey.shade600),
+            ),
+          ],
         ),
-      ],
-    ),
-  ),
-  body: SafeArea(
+      ),
+      body: SafeArea(
         child: Column(
           children: [
-            // Список сообщений
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(16),
+            // прогресс
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LinearProgressIndicator(
+                    value: _progressValue,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  child: _messages.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Start chatting with $_partnerName 👋',
-                            style: TextStyle(
-                              color: cs.onSurface.withOpacity(0.6),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, index) {
-                            final msg = _messages[index];
-                            return _ChatBubble(
-                              message: msg,
-                              onWordTap: (!msg.isUser && !msg.isSystem)
-                                  ? _translateWord
-                                  : null,
-                            );
-                          },
-                        ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _progressLabel,
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
               ),
             ),
-
-            if (_isSending)
-              Padding(
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 4),
-                    SizedBox(
-                      height: 14,
-                      width: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: cs.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$_partnerName is typing...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Поле ввода
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: cs.surface,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _inputController,
-                          minLines: 1,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            hintText: 'Write a message...',
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            border: InputBorder.none,
-                          ),
-                          onSubmitted: (_) => _sendMessage(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _isSending ? cs.outline : cs.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: _isSending
-                            ? const Icon(Icons.hourglass_top)
-                            : const Icon(Icons.send),
-                        color: cs.onPrimary,
-                        onPressed: _isSending ? null : _sendMessage,
-                      ),
-                    ),
-                  ],
-                ),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  final msg = _messages[index];
+                  final isUser = msg.role == 'user';
+                  return _buildMessageBubble(msg, isUser);
+                },
               ),
             ),
+            const Divider(height: 1),
+            _buildInputBar(),
           ],
         ),
       ),
     );
   }
-}
 
-// --------------------- ПУЗЫРИ СООБЩЕНИЙ -----------------------
+  String _detectPartnerNameFromMessages() {
+    if (widget.language == 'German') {
+      return widget.partnerGender == 'male' ? 'Lukas' : 'Anna';
+    }
+    if (widget.language == 'French') {
+      return widget.partnerGender == 'male' ? 'Pierre' : 'Marie';
+    }
+    if (widget.language == 'Spanish') {
+      return widget.partnerGender == 'male' ? 'Carlos' : 'Sofia';
+    }
+    if (widget.language == 'Italian') {
+      return widget.partnerGender == 'male' ? 'Marco' : 'Giulia';
+    }
+    if (widget.language == 'Korean') {
+      return widget.partnerGender == 'male' ? 'Minjun' : 'Jisoo';
+    }
+    return widget.partnerGender == 'male' ? 'James' : 'Emily';
+  }
 
-class _ChatBubble extends StatelessWidget {
-  final ChatMessage message;
-  final void Function(String word)? onWordTap;
-
-  const _ChatBubble({
-    required this.message,
-    this.onWordTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isUser = message.isUser;
-    final isSystem = message.isSystem;
-
+  Widget _buildMessageBubble(ChatMessage msg, bool isUser) {
     final alignment =
         isUser ? Alignment.centerRight : Alignment.centerLeft;
 
-    final bubbleColor = isSystem
-        ? Colors.grey.shade300
-        : (isUser
-            ? cs.primary.withOpacity(0.9)
-            : cs.secondaryContainer);
+    Color bgColor;
+    Color textColor;
+    String name;
 
-    final textColor = isSystem
-        ? Colors.black87
-        : (isUser ? cs.onPrimary : cs.onSecondaryContainer);
-
-    final senderStyle = TextStyle(
-      fontSize: 11,
-      fontWeight: FontWeight.bold,
-      color: textColor.withOpacity(0.8),
-    );
-
-    final textStyle = TextStyle(
-      fontSize: 14,
-      color: textColor,
-    );
-
-    Widget textWidget;
-
-    if (!isUser && !isSystem && onWordTap != null) {
-      // Сообщение бота: каждое слово кликабельно, пробелы сохраняем вручную
-      final words = message.text.split(' ');
-      final spans = <InlineSpan>[];
-
-      for (int i = 0; i < words.length; i++) {
-        final word = words[i];
-        final clean = word.replaceAll(RegExp(r'[.,!?;:()"«»\[\]]'), '');
-
-        spans.add(
-          TextSpan(
-            text: word,
-            style: textStyle.copyWith(
-              decoration: TextDecoration.underline,
-            ),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                if (clean.trim().isNotEmpty) {
-                  onWordTap!(clean);
-                }
-              },
-          ),
-        );
-
-        // Добавляем пробел между словами (кроме последнего)
-        if (i < words.length - 1) {
-          spans.add(TextSpan(text: ' ', style: textStyle));
-        }
-      }
-
-      textWidget = RichText(
-        text: TextSpan(children: spans),
-      );
+    if (msg.isCorrections) {
+      bgColor = const Color(0xFFFFF3CD); // жёлтый для ошибок
+      textColor = const Color(0xFF665200);
+      name = 'Corrections';
+    } else if (isUser) {
+      bgColor = const Color(0xFF4B5BB5);
+      textColor = Colors.white;
+      name = 'You';
     } else {
-
-      // пользователь или системное сообщение — обычный текст
-      textWidget = Text(
-        message.text,
-        style: textStyle,
-      );
+      bgColor = const Color(0xFFE4E7FF);
+      textColor = const Color(0xFF222222);
+      name = _detectPartnerNameFromMessages();
     }
+
+// содержимое: для пользователя и блока ошибок — обычный Text,
+// для обычных ответов бота — кликабельные слова
+Widget content;
+if (!isUser && !msg.isCorrections) {
+  final words = msg.text.split(RegExp(r'\s+'));
+  content = Wrap(
+    children: [
+      for (int i = 0; i < words.length; i++)
+        GestureDetector(
+          onTap: () => _onWordTap(words[i]),
+          child: Text(
+            (i == 0 ? '' : ' ') + words[i], // ЯВНО добавляем пробел
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              decoration: TextDecoration.underline,
+              decorationStyle: TextDecorationStyle.dotted,
+            ),
+          ),
+        ),
+    ],
+  );
+} else {
+  content = Text(
+    msg.text,
+    style: TextStyle(color: textColor, fontSize: 14),
+  );
+}
+
 
     return Align(
       alignment: alignment,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        constraints: const BoxConstraints(maxWidth: 420),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft:
-                isUser ? const Radius.circular(16) : const Radius.circular(4),
-            bottomRight:
-                isUser ? const Radius.circular(4) : const Radius.circular(16),
-          ),
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: isUser
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
-            Text(message.sender, style: senderStyle),
-            const SizedBox(height: 2),
-            textWidget,
+            Text(
+              name,
+              style: TextStyle(
+                color: msg.isCorrections
+                    ? Colors.black54
+                    : (isUser ? Colors.white70 : Colors.grey.shade700),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            content,
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInputBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _inputController,
+              minLines: 1,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'Write a message…',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => _sendUserMessage(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: _isSending
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send),
+            color: Theme.of(context).colorScheme.primary,
+            onPressed: _isSending ? null : _sendUserMessage,
+          ),
+        ],
       ),
     );
   }
