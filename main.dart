@@ -589,7 +589,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (word.isEmpty) return;
 
     try {
-      final uri = Uri.parse('http://172.86.88.21:8000/translate_word');
+      final uri = Uri.parse('http://172.86.88.21:8000/translate-word');
 
       final body = jsonEncode({
         'word': word,
@@ -614,6 +614,9 @@ class _ChatScreenState extends State<ChatScreen> {
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
       final translation = data['translation'] as String? ?? 'нет данных';
       final example = data['example'] as String? ?? 'нет примера';
+      final exampleTranslation =
+        data['example_translation'] as String? ?? 'нет перевода примера';
+
 
       if (!mounted) return;
 
@@ -633,7 +636,15 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 4),
               Text(example),
+              const SizedBox(height: 8),
+              Text(
+                'Перевод примера:',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(exampleTranslation),
             ],
+
           ),
           actions: [
             TextButton(
