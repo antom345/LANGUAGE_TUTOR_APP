@@ -39,6 +39,20 @@ class ChatMessage {
   });
 }
 
+class SavedWord {
+  final String word;
+  final String translation;
+  final String example;
+  final String exampleTranslation;
+
+  const SavedWord({
+    required this.word,
+    required this.translation,
+    required this.example,
+    required this.exampleTranslation,
+  });
+}
+
 // ============ SETUP SCREEN (шаги выбора) ============
 
 class SetupScreen extends StatefulWidget {
@@ -437,6 +451,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final TextEditingController _inputController = TextEditingController();
   bool _isSending = false;
+  final List<SavedWord> _savedWords = [];
 
   // прогресс по словам пользователя
   int _userWordCount = 0;
@@ -580,6 +595,43 @@ class _ChatScreenState extends State<ChatScreen> {
     return 'Level $_currentLevel · ${_userWordCount}/${_levelTargets[_currentLevel - 1]} words';
   }
 
+  bool _isWordSaved(String word) {
+    return _savedWords.any(
+      (entry) => entry.word.toLowerCase() == word.toLowerCase(),
+    );
+  }
+
+  void _saveWord(SavedWord word) {
+    setState(() {
+      final index = _savedWords.indexWhere(
+        (entry) => entry.word.toLowerCase() == word.word.toLowerCase(),
+      );
+      if (index >= 0) {
+        _savedWords[index] = word;
+      } else {
+        _savedWords.add(word);
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${word.word} добавлено в словарь')),
+    );
+  }
+
+  void _removeSavedWord(String word) {
+    if (!_isWordSaved(word)) return;
+
+    setState(() {
+      _savedWords.removeWhere(
+        (entry) => entry.word.toLowerCase() == word.toLowerCase(),
+      );
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$word удалено из словаря')),
+    );
+  }
+
   // ------ перевод слова по нажатию ------
 
   Future<void> _onWordTap(String rawWord) async {
@@ -620,38 +672,74 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (!mounted) return;
 
+      final savedWord = SavedWord(
+        word: word,
+        translation: translation,
+        example: example,
+        exampleTranslation: exampleTranslation,
+      );
+
+      bool isSaved = _isWordSaved(word);
+
       await showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text(word),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Перевод: $translation'),
-              const SizedBox(height: 8),
-              Text(
-                'Пример:',
-                style: Theme.of(context).textTheme.labelMedium,
+        builder: (context) => StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Expanded(child: Text(word)),
+                  IconButton(
+                    tooltip: isSaved
+                        ? 'Удалить из словаря'
+                        : 'Добавить в словарь',
+                    icon: Icon(
+                      isSaved ? Icons.star : Icons.star_border,
+                      color: Colors.amber.shade700,
+                    ),
+                    onPressed: () {
+                      dialogSetState(() {
+                        if (isSaved) {
+                          _removeSavedWord(word);
+                          isSaved = false;
+                        } else {
+                          _saveWord(savedWord);
+                          isSaved = true;
+                        }
+                      });
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(example),
-              const SizedBox(height: 8),
-              Text(
-                'Перевод примера:',
-                style: Theme.of(context).textTheme.labelMedium,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Перевод: $translation'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Пример:',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(example),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Перевод примера:',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(exampleTranslation),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(exampleTranslation),
-            ],
-
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         ),
       );
     } catch (e) {
@@ -668,59 +756,34 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final partnerName = _detectPartnerNameFromMessages();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Chat with $partnerName'),
-            Text(
-              '${widget.language} · level ${widget.level}',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelMedium
-                  ?.copyWith(color: Colors.grey.shade600),
-            ),
-          ],
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Chat with $partnerName'),
+              Text(
+                '${widget.language} · level ${widget.level}',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Chat'),
+              Tab(text: 'Dictionary'),
+            ],
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
+        body: TabBarView(
           children: [
-            // прогресс
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  LinearProgressIndicator(
-                    value: _progressValue,
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _progressLabel,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  final msg = _messages[index];
-                  final isUser = msg.role == 'user';
-                  return _buildMessageBubble(msg, isUser);
-                },
-              ),
-            ),
-            const Divider(height: 1),
-            _buildInputBar(),
+            SafeArea(child: _buildChatTab()),
+            SafeArea(child: _buildDictionaryTab()),
           ],
         ),
       ),
@@ -827,6 +890,114 @@ if (!isUser && !msg.isCorrections) {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildChatTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LinearProgressIndicator(
+                value: _progressValue,
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _progressLabel,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: _messages.length,
+            itemBuilder: (context, index) {
+              final msg = _messages[index];
+              final isUser = msg.role == 'user';
+              return _buildMessageBubble(msg, isUser);
+            },
+          ),
+        ),
+        const Divider(height: 1),
+        _buildInputBar(),
+      ],
+    );
+  }
+
+  Widget _buildDictionaryTab() {
+    if (_savedWords.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Вы ещё не добавили слова. Нажмите на слово в чате и выделите его звездой, чтобы сохранить.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _savedWords.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final saved = _savedWords[index];
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${saved.word} — ${saved.translation}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Удалить из словаря',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _removeSavedWord(saved.word),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Пример:',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(saved.example),
+              const SizedBox(height: 8),
+              Text(
+                'Перевод примера:',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(saved.exampleTranslation),
+            ],
+          ),
+        );
+      },
     );
   }
 
