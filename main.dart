@@ -1,6 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
+
 
 void main() {
   runApp(const LanguageTutorApp());
@@ -592,6 +598,11 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSending = false;
   final List<SavedWord> _savedWords = [];
 
+  // плеер для озвучки слов
+  late final AudioPlayer _audioPlayer;
+
+
+
   // прогресс по словам пользователя
   int _userWordCount = 0;
   int _currentLevel = 1;
@@ -603,12 +614,14 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _audioPlayer = AudioPlayer();
     _startConversation();
   }
 
   @override
   void dispose() {
     _inputController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -776,121 +789,173 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ------ перевод слова по нажатию ------
 
-  Future<void> _onWordTap(String rawWord) async {
-    // убираем пунктуацию по краям
-    final word =
-        rawWord.replaceAll(RegExp(r"[^\p{Letter}']", unicode: true), '');
-    if (word.isEmpty) return;
+Future<void> _onWordTap(String rawWord) async {
+  // убираем пунктуацию по краям
+  final word =
+      rawWord.replaceAll(RegExp(r"[^\p{Letter}']", unicode: true), '');
+  if (word.isEmpty) return;
 
-    try {
-      final uri = Uri.parse('http://172.86.88.21:8000/translate-word');
+  try {
+    final uri = Uri.parse('http://172.86.88.21:8000/translate-word');
 
-      final body = jsonEncode({
-        'word': word,
-        'language': widget.language,
-        'target_language': 'Russian',
-      });
+    final body = jsonEncode({
+      'word': word,
+      'language': widget.language,
+      'target_language': 'Russian',
+    });
 
-      final resp = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
+    final resp = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
 
-      if (resp.statusCode != 200) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Translation error: ${resp.statusCode}')),
-        );
-        return;
-      }
-
-      final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      final translation = data['translation'] as String? ?? 'нет данных';
-      final example = data['example'] as String? ?? 'нет примера';
-      final exampleTranslation =
-        data['example_translation'] as String? ?? 'нет перевода примера';
-
-
-      if (!mounted) return;
-
-      final savedWord = SavedWord(
-        word: word,
-        translation: translation,
-        example: example,
-        exampleTranslation: exampleTranslation,
-      );
-
-      bool isSaved = _isWordSaved(word);
-
-      await showDialog(
-        context: context,
-        builder: (context) => StatefulBuilder(
-          builder: (context, dialogSetState) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  Expanded(child: Text(word)),
-                  IconButton(
-                    tooltip: isSaved
-                        ? 'Удалить из словаря'
-                        : 'Добавить в словарь',
-                    icon: Icon(
-                      isSaved ? Icons.star : Icons.star_border,
-                      color: Colors.amber.shade700,
-                    ),
-                    onPressed: () {
-                      dialogSetState(() {
-                        if (isSaved) {
-                          _removeSavedWord(word);
-                          isSaved = false;
-                        } else {
-                          _saveWord(savedWord);
-                          isSaved = true;
-                        }
-                      });
-                    },
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Перевод: $translation'),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Пример:',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(example),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Перевод примера:',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(exampleTranslation),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-    } catch (e) {
+    if (resp.statusCode != 200) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Translation error: $e')),
+        SnackBar(content: Text('Translation error: ${resp.statusCode}')),
       );
+      return;
     }
+
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    final translation = data['translation'] as String? ?? 'нет данных';
+    final example = data['example'] as String? ?? 'нет примера';
+    final exampleTranslation =
+        data['example_translation'] as String? ?? 'нет перевода примера';
+
+    // ---------- АУДИО: base64 -> байты -> временный mp3 ----------
+    final audioBase64 = data['audio_base64'] as String?;
+    String? audioFilePath;
+
+    if (audioBase64 != null && audioBase64.isNotEmpty) {
+      try {
+        // 1) декодируем base64
+        final Uint8List audioBytes = base64Decode(audioBase64);
+        debugPrint('AUDIO BYTES LENGTH: ${audioBytes.length}');
+
+        // 2) получаем и создаём (на всякий случай) временную папку
+        final tempDir = await getTemporaryDirectory();
+        await Directory(tempDir.path).create(recursive: true); // ← важная строка
+
+        // 3) создаём файл внутри этой папки
+        final file = File(
+          '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3',
+        );
+
+// 4) пишем байты в файл
+await file.writeAsBytes(audioBytes, flush: true);
+audioFilePath = file.path;
+debugPrint('AUDIO FILE PATH: $audioFilePath');
+
+      } catch (e) {
+        debugPrint('ERROR while decoding/writing audio: $e');
+        audioFilePath = null;
+      }
+    }
+
+    if (!mounted) return;
+
+    final savedWord = SavedWord(
+      word: word,
+      translation: translation,
+      example: example,
+      exampleTranslation: exampleTranslation,
+    );
+
+    bool isSaved = _isWordSaved(word);
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, dialogSetState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Expanded(child: Text(word)),
+                // 🔊 КНОПКА ОЗВУЧКИ
+                if (audioFilePath != null)
+                  IconButton(
+                    tooltip: 'Произнести слово',
+                    icon: const Icon(Icons.volume_up),
+                    onPressed: () async {
+                      try {
+                        await _audioPlayer.stop();
+                        await _audioPlayer.play(
+                          DeviceFileSource(audioFilePath!),
+                        );
+                      } catch (e) {
+                        debugPrint('AUDIO PLAY ERROR: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Не удалось воспроизвести аудио'),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                IconButton(
+                  tooltip:
+                      isSaved ? 'Удалить из словаря' : 'Добавить в словарь',
+                  icon: Icon(
+                    isSaved ? Icons.star : Icons.star_border,
+                    color: Colors.amber.shade700,
+                  ),
+                  onPressed: () {
+                    dialogSetState(() {
+                      if (isSaved) {
+                        _removeSavedWord(word);
+                        isSaved = false;
+                      } else {
+                        _saveWord(savedWord);
+                        isSaved = true;
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Перевод: $translation'),
+                const SizedBox(height: 8),
+                Text(
+                  'Пример:',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(example),
+                const SizedBox(height: 8),
+                Text(
+                  'Перевод примера:',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(exampleTranslation),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    debugPrint('TRANSLATE ERROR: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Translation error: $e')),
+    );
   }
+}
+
+
 
   // ------ UI ------
 
