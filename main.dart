@@ -649,7 +649,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      final uri = Uri.parse('http://172.86.88.21:8000/chat');
+      final uri = Uri.parse('http://144.172.116.101:8000/chat');
 
       final messagesPayload = initial
           ? []
@@ -796,7 +796,7 @@ Future<void> _onWordTap(String rawWord) async {
   if (word.isEmpty) return;
 
   try {
-    final uri = Uri.parse('http://172.86.88.21:8000/translate-word');
+    final uri = Uri.parse('http://144.172.116.101:8000/translate-word');
 
     final body = jsonEncode({
       'word': word,
