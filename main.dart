@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
@@ -26,7 +27,7 @@ class LanguageTutorApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'SF Pro Text',
       ),
-      home: const SetupScreen(),
+      home: const ChatListScreen(),
     );
   }
 }
@@ -200,8 +201,72 @@ const Color kFairSkin = Color(0xFFFFF6E8);
 
 // ============ SETUP SCREEN (шаги выбора) ============
 
+class ChatListScreen extends StatelessWidget {
+  const ChatListScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final chats = [
+      {'title': 'Chat with Emily', 'language': 'English', 'level': 'B1'},
+      {'title': 'Chat with Hans',  'language': 'German', 'level': 'B1'},
+      {'title': 'Chat with Marie', 'language': 'French', 'level': 'B1'},
+      {'title': 'Chat with Sofia', 'language': 'Spanish', 'level': 'B1'},
+      {'title': 'Chat with Luca',  'language': 'Italian', 'level': 'B1'},
+      {'title': 'Chat with Kim',  'language': 'Korean', 'level': 'B1'},
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chats'),
+        centerTitle: true,
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: chats.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (context, i) {
+          final chat = chats[i];
+          final language = chat['language'] as String;
+          final level = chat['level'] as String;
+          final title = chat['title'] as String;
+
+          return Card(
+            child: ListTile(
+              leading: CircleAvatar(
+  radius: 16,
+  child: Text(
+    language.substring(0, 2).toUpperCase(),
+    style: const TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.bold,
+    ),
+  ),
+),
+ // у тебя уже есть этот виджет
+              title: Text(title),
+              subtitle: Text('$language • level $level'),
+              onTap: () {
+                // Переходим сразу в setup, НО язык уже зафиксирован
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SetupScreen(initialLanguage: language),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+
 class SetupScreen extends StatefulWidget {
-  const SetupScreen({super.key});
+  final String? initialLanguage; // <-- новое
+
+  const SetupScreen({super.key, this.initialLanguage});
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -213,13 +278,22 @@ class _SetupScreenState extends State<SetupScreen> {
   // шаг 1 — язык
   String _language = 'English';
 
+  @override
+void initState() {
+  super.initState();
+  if (widget.initialLanguage != null) {
+    _language = widget.initialLanguage!;
+    _step = 0; // стартуем сразу с уровня, без выбора языка
+  }
+}
+
   // шаг 2 — уровень
   String _level = 'B1';
 
   // шаг 3 — пользователь и собеседник
   String _userGender = 'unspecified';
   int? _userAge;
-  String _partnerGender = 'female';
+  String _partnerGender = 'male';
 
   // шаг 4 — тема
   final TextEditingController _topicController =
@@ -242,14 +316,18 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   void _nextStep() {
-    setState(() {
-      if (_step < 3) {
-        _step++;
-      } else {
-        _openChat();
-      }
+  final steps = _getSteps();
+  final lastIndex = steps.length - 1;
+
+  if (_step < lastIndex) {
+    setState(() => _step++);
+  } else {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openChat();
     });
   }
+}
+
 
   void _prevStep() {
     setState(() {
@@ -276,14 +354,23 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
+List<Widget> _getSteps() {
+  final list = <Widget>[];
+  if (widget.initialLanguage == null) {
+    list.add(_buildLanguageStep());
+  }
+  list.addAll([
+    _buildLevelStep(),
+    _buildProfileStep(),
+    _buildTopicStep(),
+  ]);
+  return list;
+}
+
+
   @override
-  Widget build(BuildContext context) {
-    final steps = [
-      _buildLanguageStep(),
-      _buildLevelStep(),
-      _buildProfileStep(),
-      _buildTopicStep(),
-    ];
+Widget build(BuildContext context) {
+  final steps = _getSteps();
 
     return Scaffold(
       appBar: AppBar(
@@ -570,6 +657,79 @@ class _SetupScreenState extends State<SetupScreen> {
 
 // ============ CHAT SCREEN ============
 
+class LoopingPngAnimation extends StatefulWidget {
+  final List<String> frames;          // список путей к кадрам
+  final Duration frameDuration;       // длительность одного кадра
+  final BoxFit fit;
+
+  const LoopingPngAnimation({
+    super.key,
+    required this.frames,
+    this.frameDuration = const Duration(milliseconds: 80),
+    this.fit = BoxFit.contain,
+  });
+
+  @override
+  State<LoopingPngAnimation> createState() => _LoopingPngAnimationState();
+}
+
+class _LoopingPngAnimationState extends State<LoopingPngAnimation> {
+  Timer? _timer;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.frames.isEmpty) return;
+
+    _timer = Timer.periodic(widget.frameDuration, (_) {
+      if (!mounted) return;
+      setState(() {
+        _index = (_index + 1) % widget.frames.length;
+      });
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant LoopingPngAnimation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.frames != widget.frames) {
+      _index = 0;
+      _timer?.cancel();
+
+      if (widget.frames.isNotEmpty) {
+        _timer = Timer.periodic(widget.frameDuration, (_) {
+          if (!mounted) return;
+          setState(() {
+            _index = (_index + 1) % widget.frames.length;
+          });
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.frames.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Image.asset(
+      widget.frames[_index],
+      fit: widget.fit,
+      gaplessPlayback: true, // важно: без мерцания при смене кадров
+    );
+  }
+}
+
+
 class ChatScreen extends StatefulWidget {
   final String language;
   final String level;
@@ -601,6 +761,13 @@ class _ChatScreenState extends State<ChatScreen> {
   // плеер для озвучки слов
   late final AudioPlayer _audioPlayer;
 
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  for (final f in _characterFrames) {
+    precacheImage(AssetImage(f), context);
+  }
+}
 
 
   // прогресс по словам пользователя
@@ -610,6 +777,31 @@ class _ChatScreenState extends State<ChatScreen> {
 
   CharacterLook get _characterLook =>
       characterLookFor(widget.language, widget.partnerGender);
+    List<String> get _characterFrames {
+  // 1) Папка для языка
+  final folder = switch (widget.language) {
+    'French' => 'french',
+    'German' => 'german',
+    'Italian' => 'italian',
+    'Korean' => 'korean',
+    'Spanish' => 'spanish',
+    _ => 'default',
+  };
+
+  // 2) Кол-во кадров (у default 450, у остальных 419)
+  final frameCount = (folder == 'default') ? 450 : 419;
+
+  // 3) Имена файлов у тебя: 0001.png ... 0419.png
+  // Поэтому индекс идёт с 1, и padLeft на 4 символа
+  return List.generate(
+    frameCount,
+    (i) {
+      final n = i + 1; // 1..frameCount
+      final name = n.toString().padLeft(4, '0'); // "0001"
+      return 'assets/anim/$folder/$name.png';
+    },
+  );
+}
 
   @override
   void initState() {
@@ -1193,41 +1385,44 @@ if (!isUser && !msg.isCorrections) {
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            width: 260,
-            child: _buildCharacterStage(look),
-          ),
-          const SizedBox(width: 12),
+Expanded(
+  flex: 1, // можно 2, 3, 4 — чем больше, тем шире правая часть
+  child: _buildCharacterStage(look),
+),
+const SizedBox(width: 12),
+
         ],
-      ),
-    );
+    ));
   }
 
   Widget _buildCharacterStage(CharacterLook look) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final height = constraints.maxHeight;
-        final width = constraints.maxWidth;
-        final figureWidth = width * 0.9;
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned.fill(
-              child: CustomPaint(painter: CharacterBackgroundPainter(look)),
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: SizedBox(
-                width: figureWidth,
-                height: height * 0.9,
-                child: CustomPaint(painter: CharacterScenePainter(look)),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(painter: CharacterBackgroundPainter(look)),
+          ),
+
+          // Анимация теперь занимает ВСЮ правую панель
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(8), // маленький отступ, чтобы не липло к краям
+              child: LoopingPngAnimation(
+                frames: _characterFrames,
+                frameDuration: const Duration(milliseconds: 80),
+                fit: BoxFit.cover, // если хочешь прям во весь рост с обрезкой — поставь cover
               ),
             ),
-          ],
-        );
-      },
-    );
-  }
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
 
   Widget _buildDictionaryTab() {
     if (_savedWords.isEmpty) {
@@ -1653,359 +1848,3 @@ class CharacterBackgroundPainter extends CustomPainter {
       oldDelegate.look != look;
 }
 
-class CharacterScenePainter extends CustomPainter {
-  final CharacterLook look;
-
-  CharacterScenePainter(this.look);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const double figureWidth = 220;
-    const double figureHeight = 420;
-
-    double scale = size.width / figureWidth;
-    double scaledHeight = figureHeight * scale;
-    if (scaledHeight > size.height) {
-      scale = size.height / figureHeight;
-      scaledHeight = size.height;
-    }
-    final double actualWidth = figureWidth * scale;
-    final double originX = (size.width - actualWidth) / 2;
-    final double originY = size.height - scaledHeight;
-
-    double tx(double x) => originX + x * scale;
-    double ty(double y) => originY + y * scale;
-
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width / 2, ty(figureHeight) - 5 * scale),
-        width: actualWidth * 0.8,
-        height: 20 * scale,
-      ),
-      Paint()..color = Colors.black.withOpacity(0.1),
-    );
-
-    final skin = look.skinColor;
-    final skinShade = darken(skin, 0.12);
-    final skinHighlight = lighten(skin, 0.08);
-    final hair = look.hairColor;
-    final hairShade = darken(hair, 0.1);
-    final hairHighlight = lighten(hair, 0.08);
-    final shirt = look.outfitColor;
-    final shirtShade = darken(shirt, 0.18);
-    final shirtHighlight = lighten(shirt, 0.12);
-    final pants = darken(look.outfitColor, 0.45);
-    final pantsShade = darken(pants, 0.15);
-    final pantsHighlight = lighten(pants, 0.12);
-    final shoeColor = darken(pants, 0.3);
-
-    // Torso front
-    final torso = Path()
-      ..moveTo(tx(40), ty(180))
-      ..lineTo(tx(180), ty(180))
-      ..lineTo(tx(165), ty(290))
-      ..lineTo(tx(55), ty(290))
-      ..close();
-    canvas.drawPath(torso, Paint()..color = shirt);
-
-    // Torso right side
-    final torsoSide = Path()
-      ..moveTo(tx(180), ty(180))
-      ..lineTo(tx(200), ty(205))
-      ..lineTo(tx(185), ty(300))
-      ..lineTo(tx(165), ty(290))
-      ..close();
-    canvas.drawPath(torsoSide, Paint()..color = shirtShade);
-
-    // Torso highlight
-    final torsoHighlight = Path()
-      ..moveTo(tx(55), ty(290))
-      ..lineTo(tx(165), ty(290))
-      ..lineTo(tx(155), ty(315))
-      ..lineTo(tx(65), ty(315))
-      ..close();
-    canvas.drawPath(torsoHighlight, Paint()..color = shirtHighlight);
-
-    final torsoCenter = Path()
-      ..moveTo(tx(110), ty(190))
-      ..lineTo(tx(118), ty(300))
-      ..lineTo(tx(102), ty(300))
-      ..lineTo(tx(95), ty(190))
-      ..close();
-    canvas.drawPath(torsoCenter, Paint()..color = shirtShade.withOpacity(0.4));
-
-    final leftShoulder = Path()
-      ..moveTo(tx(40), ty(180))
-      ..lineTo(tx(70), ty(200))
-      ..lineTo(tx(60), ty(230))
-      ..lineTo(tx(30), ty(205))
-      ..close();
-    canvas.drawPath(leftShoulder, Paint()..color = shirtHighlight.withOpacity(0.8));
-
-    final rightShoulder = Path()
-      ..moveTo(tx(150), ty(200))
-      ..lineTo(tx(180), ty(180))
-      ..lineTo(tx(190), ty(205))
-      ..lineTo(tx(165), ty(230))
-      ..close();
-    canvas.drawPath(rightShoulder, Paint()..color = shirtShade.withOpacity(0.7));
-
-    // Arms
-    final leftArm = Path()
-      ..moveTo(tx(35), ty(185))
-      ..lineTo(tx(15), ty(275))
-      ..lineTo(tx(40), ty(300))
-      ..lineTo(tx(55), ty(210))
-      ..close();
-    canvas.drawPath(leftArm, Paint()..color = shirtShade);
-
-    final rightArm = Path()
-      ..moveTo(tx(185), ty(185))
-      ..lineTo(tx(210), ty(210))
-      ..lineTo(tx(195), ty(300))
-      ..lineTo(tx(170), ty(275))
-      ..close();
-    canvas.drawPath(rightArm, Paint()..color = shirtHighlight);
-
-    final leftHand = Path()
-      ..moveTo(tx(18), ty(275))
-      ..lineTo(tx(5), ty(320))
-      ..lineTo(tx(30), ty(330))
-      ..lineTo(tx(40), ty(300))
-      ..close();
-    canvas.drawPath(leftHand, Paint()..color = skin);
-
-    final rightHand = Path()
-      ..moveTo(tx(195), ty(300))
-      ..lineTo(tx(185), ty(330))
-      ..lineTo(tx(210), ty(320))
-      ..lineTo(tx(200), ty(285))
-      ..close();
-    canvas.drawPath(rightHand, Paint()..color = skinShade);
-
-    // Belt
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(tx(50), ty(300), tx(150 - 50), 12 * scale),
-        Radius.circular(6 * scale),
-      ),
-      Paint()..color = darken(pants, 0.2),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(tx(110), ty(306)),
-          width: 50 * scale,
-          height: 14 * scale,
-        ),
-        Radius.circular(4 * scale),
-      ),
-      Paint()..color = lighten(pants, 0.2),
-    );
-
-    // Legs
-    final leftLeg = Path()
-      ..moveTo(tx(70), ty(312))
-      ..lineTo(tx(105), ty(312))
-      ..lineTo(tx(95), ty(430))
-      ..lineTo(tx(60), ty(430))
-      ..close();
-    canvas.drawPath(leftLeg, Paint()..color = pantsHighlight);
-
-    final leftLegSide = Path()
-      ..moveTo(tx(105), ty(312))
-      ..lineTo(tx(118), ty(330))
-      ..lineTo(tx(108), ty(430))
-      ..lineTo(tx(95), ty(430))
-      ..close();
-    canvas.drawPath(leftLegSide, Paint()..color = pantsShade.withOpacity(0.7));
-
-    final rightLeg = Path()
-      ..moveTo(tx(115), ty(312))
-      ..lineTo(tx(150), ty(312))
-      ..lineTo(tx(160), ty(430))
-      ..lineTo(tx(125), ty(430))
-      ..close();
-    canvas.drawPath(rightLeg, Paint()..color = pantsShade);
-
-    final rightLegHighlight = Path()
-      ..moveTo(tx(115), ty(312))
-      ..lineTo(tx(135), ty(312))
-      ..lineTo(tx(140), ty(430))
-      ..lineTo(tx(122), ty(430))
-      ..close();
-    canvas.drawPath(rightLegHighlight, Paint()..color = pantsHighlight.withOpacity(0.6));
-
-    final leftCuff = Path()
-      ..moveTo(tx(60), ty(400))
-      ..lineTo(tx(95), ty(400))
-      ..lineTo(tx(92), ty(410))
-      ..lineTo(tx(63), ty(410))
-      ..close();
-    canvas.drawPath(leftCuff, Paint()..color = lighten(pantsHighlight, 0.2));
-
-    final rightCuff = Path()
-      ..moveTo(tx(125), ty(400))
-      ..lineTo(tx(160), ty(400))
-      ..lineTo(tx(157), ty(410))
-      ..lineTo(tx(128), ty(410))
-      ..close();
-    canvas.drawPath(rightCuff, Paint()..color = lighten(pantsShade, 0.15));
-
-    // Shoes
-    final leftShoe = Path()
-      ..moveTo(tx(55), ty(430))
-      ..lineTo(tx(98), ty(430))
-      ..lineTo(tx(110), ty(450))
-      ..lineTo(tx(45), ty(450))
-      ..close();
-    canvas.drawPath(leftShoe, Paint()..color = shoeColor);
-    canvas.drawRect(
-      Rect.fromLTWH(tx(45), ty(448), 65 * scale, 5 * scale),
-      Paint()..color = darken(shoeColor, 0.1),
-    );
-
-    final rightShoe = Path()
-      ..moveTo(tx(120), ty(430))
-      ..lineTo(tx(165), ty(430))
-      ..lineTo(tx(175), ty(450))
-      ..lineTo(tx(110), ty(450))
-      ..close();
-    canvas.drawPath(rightShoe, Paint()..color = darken(shoeColor, 0.1));
-    canvas.drawRect(
-      Rect.fromLTWH(tx(110), ty(448), 65 * scale, 5 * scale),
-      Paint()..color = darken(shoeColor, 0.2),
-    );
-
-    // Neck
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(tx(95), ty(150), 30 * scale, 35 * scale),
-        Radius.circular(8 * scale),
-      ),
-      Paint()..color = skinShade,
-    );
-
-    // Head
-    final head = Path()
-      ..moveTo(tx(50), ty(60))
-      ..lineTo(tx(160), ty(60))
-      ..lineTo(tx(185), ty(150))
-      ..lineTo(tx(135), ty(215))
-      ..lineTo(tx(75), ty(215))
-      ..lineTo(tx(25), ty(150))
-      ..close();
-    canvas.drawPath(head, Paint()..color = skin);
-
-    final headShadow = Path()
-      ..moveTo(tx(110), ty(60))
-      ..lineTo(tx(160), ty(60))
-      ..lineTo(tx(185), ty(150))
-      ..lineTo(tx(135), ty(215))
-      ..lineTo(tx(110), ty(205))
-      ..close();
-    canvas.drawPath(headShadow, Paint()..color = skinShade.withOpacity(0.5));
-
-    final chin = Path()
-      ..moveTo(tx(70), ty(205))
-      ..lineTo(tx(135), ty(205))
-      ..lineTo(tx(112), ty(235))
-      ..lineTo(tx(93), ty(235))
-      ..close();
-    canvas.drawPath(chin, Paint()..color = skinHighlight);
-
-    // Hair layers
-    final hairFront = Path()
-      ..moveTo(tx(35), ty(70))
-      ..lineTo(tx(170), ty(70))
-      ..lineTo(tx(150), ty(30))
-      ..lineTo(tx(95), ty(15))
-      ..lineTo(tx(45), ty(35))
-      ..close();
-    canvas.drawPath(hairFront, Paint()..color = hair);
-
-    final hairSide = Path()
-      ..moveTo(tx(170), ty(70))
-      ..lineTo(tx(195), ty(110))
-      ..lineTo(tx(170), ty(150))
-      ..lineTo(tx(150), ty(90))
-      ..close();
-    canvas.drawPath(hairSide, Paint()..color = hairShade);
-
-    final hairTop = Path()
-      ..moveTo(tx(60), ty(30))
-      ..lineTo(tx(115), ty(0))
-      ..lineTo(tx(150), ty(20))
-      ..lineTo(tx(110), ty(45))
-      ..close();
-    canvas.drawPath(hairTop, Paint()..color = hairHighlight);
-
-    // Eyes
-    final eyePaint = Paint()..color = Colors.black87;
-    canvas.drawRRect(
-      RRect.fromRectXY(
-        Rect.fromCenter(center: Offset(tx(85), ty(140)), width: 22 * scale, height: 14 * scale),
-        6 * scale,
-        6 * scale,
-      ),
-      eyePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectXY(
-        Rect.fromCenter(center: Offset(tx(135), ty(140)), width: 22 * scale, height: 14 * scale),
-        6 * scale,
-        6 * scale,
-      ),
-      eyePaint,
-    );
-
-    // Brows
-    final browPaint = Paint()
-      ..color = hairShade
-      ..strokeWidth = 6 * scale
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(tx(70), ty(125)), Offset(tx(100), ty(118)), browPaint);
-    canvas.drawLine(Offset(tx(120), ty(118)), Offset(tx(150), ty(125)), browPaint);
-
-    // Nose
-    final nose = Path()
-      ..moveTo(tx(110), ty(150))
-      ..lineTo(tx(105), ty(170))
-      ..lineTo(tx(115), ty(170))
-      ..close();
-    canvas.drawPath(nose, Paint()..color = skinShade.withOpacity(0.8));
-
-    // Mouth
-    final mouth = Path()
-      ..moveTo(tx(85), ty(190))
-      ..quadraticBezierTo(tx(110), ty(205), tx(135), ty(190))
-      ..lineTo(tx(135), ty(195))
-      ..quadraticBezierTo(tx(110), ty(210), tx(85), ty(195))
-      ..close();
-    canvas.drawPath(mouth, Paint()..color = Colors.black.withOpacity(0.6));
-
-    // Cheeks
-    final cheekPaint = Paint()..color = look.accentColor.withOpacity(0.25);
-    canvas.drawOval(Rect.fromCenter(center: Offset(tx(75), ty(165)), width: 25 * scale, height: 18 * scale), cheekPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(tx(145), ty(165)), width: 25 * scale, height: 18 * scale), cheekPaint);
-
-    // Shoulder dots
-    final shoulderFacetLeft = Path()
-      ..moveTo(tx(45), ty(195))
-      ..lineTo(tx(60), ty(210))
-      ..lineTo(tx(40), ty(218))
-      ..close();
-    canvas.drawPath(shoulderFacetLeft, Paint()..color = shirtHighlight.withOpacity(0.7));
-
-    final shoulderFacetRight = Path()
-      ..moveTo(tx(165), ty(210))
-      ..lineTo(tx(185), ty(195))
-      ..lineTo(tx(180), ty(218))
-      ..close();
-    canvas.drawPath(shoulderFacetRight, Paint()..color = shirtShade.withOpacity(0.6));
-  }
-
-  @override
-  bool shouldRepaint(covariant CharacterScenePainter oldDelegate) =>
-      oldDelegate.look != look;
-}
