@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 
-
 void main() {
   runApp(const LanguageTutorApp());
 }
@@ -27,7 +26,7 @@ class LanguageTutorApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'SF Pro Text',
       ),
-      home: const ChatListScreen(),
+      home: const AgeScreen(),
     );
   }
 }
@@ -97,22 +96,23 @@ class CharacterLook {
 
   @override
   int get hashCode => Object.hash(
-        primaryColor,
-        accentColor,
-        hairColor,
-        outfitColor,
-        skinColor,
-        narrowEyes,
-        longHair,
-        badgeText,
-      );
+    primaryColor,
+    accentColor,
+    hairColor,
+    outfitColor,
+    skinColor,
+    narrowEyes,
+    longHair,
+    badgeText,
+  );
 }
 
 CharacterLook characterLookFor(String language, String gender) {
   final isMale = gender.toLowerCase() == 'male';
   final cleanLang = language.trim().isEmpty ? 'Language' : language.trim();
-  final shortCode =
-      cleanLang.length >= 2 ? cleanLang.substring(0, 2).toUpperCase() : cleanLang.toUpperCase();
+  final shortCode = cleanLang.length >= 2
+      ? cleanLang.substring(0, 2).toUpperCase()
+      : cleanLang.toUpperCase();
   switch (language) {
     case 'Korean':
       return CharacterLook(
@@ -185,470 +185,543 @@ CharacterLook characterLookFor(String language, String gender) {
 
 Color lighten(Color color, [double amount = 0.1]) {
   final hsl = HSLColor.fromColor(color);
-  final lighter =
-      hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
+  final lighter = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
   return lighter.toColor();
 }
 
 Color darken(Color color, [double amount = 0.1]) {
   final hsl = HSLColor.fromColor(color);
-  final darker =
-      hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+  final darker = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
   return darker.toColor();
 }
 
 const Color kFairSkin = Color(0xFFFFF6E8);
 
-// ============ SETUP SCREEN (шаги выбора) ============
+// ============ ONBOARDING ============
+
+class AgeScreen extends StatefulWidget {
+  const AgeScreen({super.key});
+
+  @override
+  State<AgeScreen> createState() => _AgeScreenState();
+}
+
+class _AgeScreenState extends State<AgeScreen> {
+  double _age = 24;
+
+  void _continue() {
+    final age = _age.round();
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => GenderScreen(userAge: age)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFEEF2FF), Color(0xFFE0F7FA)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.cake_outlined, size: 28),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Сколько вам лет?',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Укажите возраст ползунком — так быстрее и удобнее.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Возраст',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Row(
+                            children: [
+                              IconButton(
+                                onPressed: () => setState(
+                                  () => _age = (_age - 1).clamp(5, 80),
+                                ),
+                                icon: const Icon(Icons.remove_circle_outline),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${_age.round()}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => setState(
+                                  () => _age = (_age + 1).clamp(5, 80),
+                                ),
+                                icon: const Icon(Icons.add_circle_outline),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: _age,
+                        min: 5,
+                        max: 80,
+                        divisions: 75,
+                        label: '${_age.round()}',
+                        activeColor: Theme.of(context).colorScheme.primary,
+                        onChanged: (v) => setState(() => _age = v),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: const [Text('5'), Text('80')],
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    CharacterAvatar(
+                      look: characterLookFor('English', 'female'),
+                      size: 70,
+                    ),
+                    const SizedBox(width: 12),
+                    CharacterAvatar(
+                      look: characterLookFor('Spanish', 'male'),
+                      size: 70,
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 160,
+                      child: ElevatedButton(
+                        onPressed: _continue,
+                        child: const Text('Далее'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class GenderScreen extends StatefulWidget {
+  final int userAge;
+  const GenderScreen({super.key, required this.userAge});
+
+  @override
+  State<GenderScreen> createState() => _GenderScreenState();
+}
+
+class _GenderScreenState extends State<GenderScreen> {
+  String _gender = 'unspecified';
+
+  void _continue() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            ChatListScreen(userAge: widget.userAge, userGender: _gender),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFE3F2FD), Color(0xFFFDE7F3)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.account_circle_outlined, size: 28),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Укажите ваш пол',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Возраст: ${widget.userAge} • Это поможет подобрать обращение.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Выбор',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 10,
+                        children: [
+                          _genderTile(
+                            label: 'Не важно',
+                            value: 'unspecified',
+                            icon: Icons.all_inclusive,
+                            color: Colors.grey.shade600,
+                          ),
+                          _genderTile(
+                            label: 'Мужской',
+                            value: 'male',
+                            icon: Icons.male,
+                            color: const Color(0xFF1E88E5),
+                          ),
+                          _genderTile(
+                            label: 'Женский',
+                            value: 'female',
+                            icon: Icons.female,
+                            color: const Color(0xFFD81B60),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    CharacterAvatar(
+                      look: characterLookFor('German', 'male'),
+                      size: 70,
+                    ),
+                    const SizedBox(width: 12),
+                    CharacterAvatar(
+                      look: characterLookFor('French', 'female'),
+                      size: 70,
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 160,
+                      child: ElevatedButton(
+                        onPressed: _continue,
+                        child: const Text('Далее'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _genderTile({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final selected = _gender == value;
+    return InkWell(
+      onTap: () => setState(() => _gender = value),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? color.withOpacity(0.12) : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? color : Colors.grey.shade300,
+            width: 1.4,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: selected ? color : Colors.grey.shade600),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? color : Colors.grey.shade800,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============ ЧАТЫ ============
 
 class ChatListScreen extends StatelessWidget {
-  const ChatListScreen({super.key});
+  final int userAge;
+  final String userGender;
+
+  const ChatListScreen({
+    super.key,
+    required this.userAge,
+    required this.userGender,
+  });
 
   @override
   Widget build(BuildContext context) {
     final chats = [
-      {'title': 'Chat with Emily', 'language': 'English', 'level': 'B1'},
-      {'title': 'Chat with Hans',  'language': 'German', 'level': 'B1'},
-      {'title': 'Chat with Marie', 'language': 'French', 'level': 'B1'},
-      {'title': 'Chat with Sofia', 'language': 'Spanish', 'level': 'B1'},
-      {'title': 'Chat with Luca',  'language': 'Italian', 'level': 'B1'},
-      {'title': 'Chat with Kim',  'language': 'Korean', 'level': 'B1'},
+      {
+        'name': 'Emily',
+        'language': 'English',
+        'partnerGender': 'female',
+        'color': const Color(0xFF6C63FF),
+      },
+      {
+        'name': 'Hans',
+        'language': 'German',
+        'partnerGender': 'male',
+        'color': const Color(0xFF00BFA6),
+      },
+      {
+        'name': 'Marie',
+        'language': 'French',
+        'partnerGender': 'female',
+        'color': const Color(0xFFFF6584),
+      },
+      {
+        'name': 'Sofia',
+        'language': 'Spanish',
+        'partnerGender': 'female',
+        'color': const Color(0xFFFFB300),
+      },
+      {
+        'name': 'Luca',
+        'language': 'Italian',
+        'partnerGender': 'male',
+        'color': const Color(0xFF29B6F6),
+      },
+      {
+        'name': 'Kim',
+        'language': 'Korean',
+        'partnerGender': 'female',
+        'color': const Color(0xFF8E24AA),
+      },
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chats'),
-        centerTitle: true,
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(12),
-        itemCount: chats.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (context, i) {
-          final chat = chats[i];
-          final language = chat['language'] as String;
-          final level = chat['level'] as String;
-          final title = chat['title'] as String;
+      appBar: AppBar(title: const Text('Диалоги'), centerTitle: true),
+      body: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: chats.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, i) {
+                final chat = chats[i];
+                final name = chat['name'] as String;
+                final lang = chat['language'] as String;
+                final partnerGender = chat['partnerGender'] as String;
+                final color = chat['color'] as Color;
+                final look = characterLookFor(lang, partnerGender);
 
-          return Card(
-            child: ListTile(
-              leading: CircleAvatar(
-  radius: 16,
-  child: Text(
-    language.substring(0, 2).toUpperCase(),
-    style: const TextStyle(
-      fontSize: 10,
-      fontWeight: FontWeight.bold,
-    ),
-  ),
-),
- // у тебя уже есть этот виджет
-              title: Text(title),
-              subtitle: Text('$language • level $level'),
-              onTap: () {
-                // Переходим сразу в setup, НО язык уже зафиксирован
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SetupScreen(initialLanguage: language),
+                return Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () async {
+                      final level = await _pickLevel(context);
+                      if (level == null) return;
+                      if (!context.mounted) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            language: lang,
+                            level: level,
+                            topic: 'General conversation',
+                            userGender: userGender,
+                            userAge: userAge,
+                            partnerGender: partnerGender,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: CharacterAvatar(look: look, size: 48),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$name ($lang)',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Нажмите чтобы начать диалог',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.grey.shade400,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               },
             ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-
-class SetupScreen extends StatefulWidget {
-  final String? initialLanguage; // <-- новое
-
-  const SetupScreen({super.key, this.initialLanguage});
-
-  @override
-  State<SetupScreen> createState() => _SetupScreenState();
-}
-
-class _SetupScreenState extends State<SetupScreen> {
-  int _step = 0;
-
-  // шаг 1 — язык
-  String _language = 'English';
-
-  @override
-void initState() {
-  super.initState();
-  if (widget.initialLanguage != null) {
-    _language = widget.initialLanguage!;
-    _step = 0; // стартуем сразу с уровня, без выбора языка
-  }
-}
-
-  // шаг 2 — уровень
-  String _level = 'B1';
-
-  // шаг 3 — пользователь и собеседник
-  String _userGender = 'unspecified';
-  int? _userAge;
-  String _partnerGender = 'male';
-
-  // шаг 4 — тема
-  final TextEditingController _topicController =
-      TextEditingController(text: 'General conversation');
-
-  final List<String> _topicSuggestions = const [
-    'Daily life',
-    'Travel',
-    'Work & study',
-    'Relationships',
-    'Hobbies',
-    'Movies & series',
-    'Culture & society',
-  ];
-
-  @override
-  void dispose() {
-    _topicController.dispose();
-    super.dispose();
-  }
-
-  void _nextStep() {
-  final steps = _getSteps();
-  final lastIndex = steps.length - 1;
-
-  if (_step < lastIndex) {
-    setState(() => _step++);
-  } else {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _openChat();
-    });
-  }
-}
-
-
-  void _prevStep() {
-    setState(() {
-      if (_step > 0) _step--;
-    });
-  }
-
-  void _openChat() {
-    final topic = _topicController.text.trim().isEmpty
-        ? 'General conversation'
-        : _topicController.text.trim();
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          language: _language,
-          level: _level,
-          topic: topic,
-          userGender: _userGender,
-          userAge: _userAge,
-          partnerGender: _partnerGender,
-        ),
-      ),
-    );
-  }
-
-List<Widget> _getSteps() {
-  final list = <Widget>[];
-  if (widget.initialLanguage == null) {
-    list.add(_buildLanguageStep());
-  }
-  list.addAll([
-    _buildLevelStep(),
-    _buildProfileStep(),
-    _buildTopicStep(),
-  ]);
-  return list;
-}
-
-
-  @override
-Widget build(BuildContext context) {
-  final steps = _getSteps();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Language Tutor setup'),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // индикатор шагов
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  steps.length,
-                  (index) => Container(
-                    width: 12,
-                    height: 12,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: index == _step
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.shade300,
-                    ),
-                  ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFF5F7FB), Color(0xFFE8EAF6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-              const SizedBox(height: 16),
-              Expanded(child: steps[_step]),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  if (_step > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _prevStep,
-                        child: const Text('Back'),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 56,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Выберите чат слева',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.grey.shade600,
                       ),
                     ),
-                  if (_step > 0) const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _nextStep,
-                      child: Text(_step < steps.length - 1 ? 'Next' : 'Start chat'),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ----- шаг 1: язык -----
-
-  Widget _buildLanguageStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Choose language',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 24),
-        _languageTile('English'),
-        _languageTile('German'),
-        _languageTile('French'),
-        _languageTile('Spanish'),
-        _languageTile('Italian'),
-        _languageTile('Korean'),
-      ],
-    );
-  }
-
-  Widget _languageTile(String lang) {
-    final selected = _language == lang;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(lang),
-      trailing: selected
-          ? Icon(Icons.check_circle,
-              color: Theme.of(context).colorScheme.primary)
-          : const Icon(Icons.circle_outlined),
-      onTap: () {
-        setState(() {
-          _language = lang;
-        });
-      },
-    );
-  }
-
-  // ----- шаг 2: уровень -----
-
-  Widget _buildLevelStep() {
-    const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your language level',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 24),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: levels.map((lvl) {
-            final selected = _level == lvl;
-            return ChoiceChip(
-              label: Text(lvl),
-              selected: selected,
-              onSelected: (_) {
-                setState(() {
-                  _level = lvl;
-                });
-              },
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Choose approximately how confident you feel in this language. '
-          'The tutor will adapt to this level.',
-        ),
-      ],
-    );
-  }
-
-  // ----- шаг 3: профиль -----
-
-  Widget _buildProfileStep() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'About you',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
-          const Text('Your gender'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Not important'),
-                selected: _userGender == 'unspecified',
-                onSelected: (_) {
-                  setState(() {
-                    _userGender = 'unspecified';
-                  });
-                },
-              ),
-              ChoiceChip(
-                label: const Text('Male'),
-                selected: _userGender == 'male',
-                onSelected: (_) {
-                  setState(() {
-                    _userGender = 'male';
-                  });
-                },
-              ),
-              ChoiceChip(
-                label: const Text('Female'),
-                selected: _userGender == 'female',
-                onSelected: (_) {
-                  setState(() {
-                    _userGender = 'female';
-                  });
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Your age (optional)'),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: 'e.g. 20',
-              border: OutlineInputBorder(),
             ),
-            onChanged: (value) {
-              setState(() {
-                if (value.trim().isEmpty) {
-                  _userAge = null;
-                } else {
-                  _userAge = int.tryParse(value.trim());
-                }
-              });
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Who do you want to talk to?',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Woman'),
-                selected: _partnerGender == 'female',
-                onSelected: (_) {
-                  setState(() {
-                    _partnerGender = 'female';
-                  });
-                },
-              ),
-              ChoiceChip(
-                label: const Text('Man'),
-                selected: _partnerGender == 'male',
-                onSelected: (_) {
-                  setState(() {
-                    _partnerGender = 'male';
-                  });
-                },
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  // ----- шаг 4: тема -----
-
-  Widget _buildTopicStep() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Future<String?> _pickLevel(BuildContext context) {
+    const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    return showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Выберите уровень языка'),
         children: [
-          Text(
-            'Choose a topic',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _topicController,
-            decoration: const InputDecoration(
-              labelText: 'Topic',
-              hintText: 'For example: Travel, work, hobbies…',
-              border: OutlineInputBorder(),
+          for (final lvl in levels)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(lvl),
+              child: Text(lvl),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Suggestions',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _topicSuggestions.map((t) {
-              final selected = _topicController.text.trim() == t;
-              return ChoiceChip(
-                label: Text(t),
-                selected: selected,
-                onSelected: (_) {
-                  setState(() {
-                    _topicController.text = t;
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'You can type your own topic or tap one of the suggestions. '
-            'The tutor will start the conversation with a question related to this topic.',
-          ),
         ],
       ),
     );
@@ -658,8 +731,8 @@ Widget build(BuildContext context) {
 // ============ CHAT SCREEN ============
 
 class LoopingPngAnimation extends StatefulWidget {
-  final List<String> frames;          // список путей к кадрам
-  final Duration frameDuration;       // длительность одного кадра
+  final List<String> frames; // список путей к кадрам
+  final Duration frameDuration; // длительность одного кадра
   final BoxFit fit;
 
   const LoopingPngAnimation({
@@ -729,7 +802,6 @@ class _LoopingPngAnimationState extends State<LoopingPngAnimation> {
   }
 }
 
-
 class ChatScreen extends StatefulWidget {
   final String language;
   final String level;
@@ -760,15 +832,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // плеер для озвучки слов
   late final AudioPlayer _audioPlayer;
+  late final List<String> _characterFrames;
 
-@override
-void didChangeDependencies() {
-  super.didChangeDependencies();
-  for (final f in _characterFrames) {
-    precacheImage(AssetImage(f), context);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    for (final f in _characterFrames) {
+      precacheImage(AssetImage(f), context);
+    }
   }
-}
-
 
   // прогресс по словам пользователя
   int _userWordCount = 0;
@@ -777,36 +849,30 @@ void didChangeDependencies() {
 
   CharacterLook get _characterLook =>
       characterLookFor(widget.language, widget.partnerGender);
-    List<String> get _characterFrames {
-  // 1) Папка для языка
-  final folder = switch (widget.language) {
-    'French' => 'french',
-    'German' => 'german',
-    'Italian' => 'italian',
-    'Korean' => 'korean',
-    'Spanish' => 'spanish',
-    _ => 'default',
-  };
+  List<String> _buildCharacterFrames() {
+    final folder = switch (widget.language) {
+      'French' => 'french',
+      'German' => 'german',
+      'Italian' => 'italian',
+      'Korean' => 'korean',
+      'Spanish' => 'spanish',
+      _ => 'default',
+    };
 
-  // 2) Кол-во кадров (у default 450, у остальных 419)
-  final frameCount = (folder == 'default') ? 450 : 419;
+    final frameCount = (folder == 'default') ? 450 : 419;
 
-  // 3) Имена файлов у тебя: 0001.png ... 0419.png
-  // Поэтому индекс идёт с 1, и padLeft на 4 символа
-  return List.generate(
-    frameCount,
-    (i) {
+    return List.generate(frameCount, (i) {
       final n = i + 1; // 1..frameCount
       final name = n.toString().padLeft(4, '0'); // "0001"
       return 'assets/anim/$folder/$name.png';
-    },
-  );
-}
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
+    _characterFrames = _buildCharacterFrames();
     _startConversation();
   }
 
@@ -846,12 +912,11 @@ void didChangeDependencies() {
       final messagesPayload = initial
           ? []
           : _messages
-              .where((m) => !m.isCorrections) // в историю не отправляем сообщения с ошибками
-              .map((m) => {
-                    'role': m.role,
-                    'content': m.text,
-                  })
-              .toList();
+                .where(
+                  (m) => !m.isCorrections,
+                ) // в историю не отправляем сообщения с ошибками
+                .map((m) => {'role': m.role, 'content': m.text})
+                .toList();
 
       final body = jsonEncode({
         'messages': messagesPayload,
@@ -879,27 +944,31 @@ void didChangeDependencies() {
             _messages.add(ChatMessage(role: 'assistant', text: reply.trim()));
           }
           if (correctionsText.trim().isNotEmpty) {
-            _messages.add(ChatMessage(
-              role: 'assistant',
-              text: correctionsText.trim(),
-              isCorrections: true,
-            ));
+            _messages.add(
+              ChatMessage(
+                role: 'assistant',
+                text: correctionsText.trim(),
+                isCorrections: true,
+              ),
+            );
           }
         });
       } else {
         setState(() {
-          _messages.add(ChatMessage(
-            role: 'assistant',
-            text: 'System: error ${resp.statusCode} from server. Please try again.',
-          ));
+          _messages.add(
+            ChatMessage(
+              role: 'assistant',
+              text:
+                  'System: error ${resp.statusCode} from server. Please try again.',
+            ),
+          );
         });
       }
     } catch (e) {
       setState(() {
-        _messages.add(ChatMessage(
-          role: 'assistant',
-          text: 'System: connection error: $e',
-        ));
+        _messages.add(
+          ChatMessage(role: 'assistant', text: 'System: connection error: $e'),
+        );
       });
     } finally {
       setState(() {
@@ -922,7 +991,8 @@ void didChangeDependencies() {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Great! You finished level ${_currentLevel - 1}. Level $_currentLevel unlocked!'),
+              'Great! You finished level ${_currentLevel - 1}. Level $_currentLevel unlocked!',
+            ),
           ),
         );
       }
@@ -960,9 +1030,9 @@ void didChangeDependencies() {
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${word.word} добавлено в словарь')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${word.word} добавлено в словарь')));
   }
 
   void _removeSavedWord(String word) {
@@ -974,180 +1044,182 @@ void didChangeDependencies() {
       );
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$word удалено из словаря')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$word удалено из словаря')));
   }
 
   // ------ перевод слова по нажатию ------
 
-Future<void> _onWordTap(String rawWord) async {
-  // убираем пунктуацию по краям
-  final word =
-      rawWord.replaceAll(RegExp(r"[^\p{Letter}']", unicode: true), '');
-  if (word.isEmpty) return;
-
-  try {
-    final uri = Uri.parse('http://144.172.116.101:8000/translate-word');
-
-    final body = jsonEncode({
-      'word': word,
-      'language': widget.language,
-      'target_language': 'Russian',
-    });
-
-    final resp = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: body,
+  Future<void> _onWordTap(String rawWord) async {
+    // убираем пунктуацию по краям
+    final word = rawWord.replaceAll(
+      RegExp(r"[^\p{Letter}']", unicode: true),
+      '',
     );
+    if (word.isEmpty) return;
 
-    if (resp.statusCode != 200) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Translation error: ${resp.statusCode}')),
+    try {
+      final uri = Uri.parse('http://144.172.116.101:8000/translate-word');
+
+      final body = jsonEncode({
+        'word': word,
+        'language': widget.language,
+        'target_language': 'Russian',
+      });
+
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
       );
-      return;
-    }
 
-    final data = jsonDecode(resp.body) as Map<String, dynamic>;
-    final translation = data['translation'] as String? ?? 'нет данных';
-    final example = data['example'] as String? ?? 'нет примера';
-    final exampleTranslation =
-        data['example_translation'] as String? ?? 'нет перевода примера';
-
-    // ---------- АУДИО: base64 -> байты -> временный mp3 ----------
-    final audioBase64 = data['audio_base64'] as String?;
-    String? audioFilePath;
-
-    if (audioBase64 != null && audioBase64.isNotEmpty) {
-      try {
-        // 1) декодируем base64
-        final Uint8List audioBytes = base64Decode(audioBase64);
-        debugPrint('AUDIO BYTES LENGTH: ${audioBytes.length}');
-
-        // 2) получаем и создаём (на всякий случай) временную папку
-        final tempDir = await getTemporaryDirectory();
-        await Directory(tempDir.path).create(recursive: true); // ← важная строка
-
-        // 3) создаём файл внутри этой папки
-        final file = File(
-          '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3',
+      if (resp.statusCode != 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Translation error: ${resp.statusCode}')),
         );
-
-// 4) пишем байты в файл
-await file.writeAsBytes(audioBytes, flush: true);
-audioFilePath = file.path;
-debugPrint('AUDIO FILE PATH: $audioFilePath');
-
-      } catch (e) {
-        debugPrint('ERROR while decoding/writing audio: $e');
-        audioFilePath = null;
+        return;
       }
-    }
 
-    if (!mounted) return;
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final translation = data['translation'] as String? ?? 'нет данных';
+      final example = data['example'] as String? ?? 'нет примера';
+      final exampleTranslation =
+          data['example_translation'] as String? ?? 'нет перевода примера';
 
-    final savedWord = SavedWord(
-      word: word,
-      translation: translation,
-      example: example,
-      exampleTranslation: exampleTranslation,
-    );
+      // ---------- АУДИО: base64 -> байты -> временный mp3 ----------
+      final audioBase64 = data['audio_base64'] as String?;
+      String? audioFilePath;
 
-    bool isSaved = _isWordSaved(word);
+      if (audioBase64 != null && audioBase64.isNotEmpty) {
+        try {
+          // 1) декодируем base64
+          final Uint8List audioBytes = base64Decode(audioBase64);
+          debugPrint('AUDIO BYTES LENGTH: ${audioBytes.length}');
 
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, dialogSetState) {
-          return AlertDialog(
-            title: Row(
-              children: [
-                Expanded(child: Text(word)),
-                // 🔊 КНОПКА ОЗВУЧКИ
-                if (audioFilePath != null)
+          // 2) получаем и создаём (на всякий случай) временную папку
+          final tempDir = await getTemporaryDirectory();
+          await Directory(
+            tempDir.path,
+          ).create(recursive: true); // ← важная строка
+
+          // 3) создаём файл внутри этой папки
+          final file = File(
+            '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3',
+          );
+
+          // 4) пишем байты в файл
+          await file.writeAsBytes(audioBytes, flush: true);
+          audioFilePath = file.path;
+          debugPrint('AUDIO FILE PATH: $audioFilePath');
+        } catch (e) {
+          debugPrint('ERROR while decoding/writing audio: $e');
+          audioFilePath = null;
+        }
+      }
+
+      if (!mounted) return;
+
+      final savedWord = SavedWord(
+        word: word,
+        translation: translation,
+        example: example,
+        exampleTranslation: exampleTranslation,
+      );
+
+      bool isSaved = _isWordSaved(word);
+
+      await showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Expanded(child: Text(word)),
+                  // 🔊 КНОПКА ОЗВУЧКИ
+                  if (audioFilePath != null)
+                    IconButton(
+                      tooltip: 'Произнести слово',
+                      icon: const Icon(Icons.volume_up),
+                      onPressed: () async {
+                        try {
+                          await _audioPlayer.stop();
+                          await _audioPlayer.play(
+                            DeviceFileSource(audioFilePath!),
+                          );
+                        } catch (e) {
+                          debugPrint('AUDIO PLAY ERROR: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Не удалось воспроизвести аудио'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   IconButton(
-                    tooltip: 'Произнести слово',
-                    icon: const Icon(Icons.volume_up),
-                    onPressed: () async {
-                      try {
-                        await _audioPlayer.stop();
-                        await _audioPlayer.play(
-                          DeviceFileSource(audioFilePath!),
-                        );
-                      } catch (e) {
-                        debugPrint('AUDIO PLAY ERROR: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Не удалось воспроизвести аудио'),
-                          ),
-                        );
-                      }
+                    tooltip: isSaved
+                        ? 'Удалить из словаря'
+                        : 'Добавить в словарь',
+                    icon: Icon(
+                      isSaved ? Icons.star : Icons.star_border,
+                      color: Colors.amber.shade700,
+                    ),
+                    onPressed: () {
+                      dialogSetState(() {
+                        if (isSaved) {
+                          _removeSavedWord(word);
+                          isSaved = false;
+                        } else {
+                          _saveWord(savedWord);
+                          isSaved = true;
+                        }
+                      });
                     },
                   ),
-                IconButton(
-                  tooltip:
-                      isSaved ? 'Удалить из словаря' : 'Добавить в словарь',
-                  icon: Icon(
-                    isSaved ? Icons.star : Icons.star_border,
-                    color: Colors.amber.shade700,
-                  ),
-                  onPressed: () {
-                    dialogSetState(() {
-                      if (isSaved) {
-                        _removeSavedWord(word);
-                        isSaved = false;
-                      } else {
-                        _saveWord(savedWord);
-                        isSaved = true;
-                      }
-                    });
-                  },
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Перевод: $translation'),
-                const SizedBox(height: 8),
-                Text(
-                  'Пример:',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(example),
-                const SizedBox(height: 8),
-                Text(
-                  'Перевод примера:',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(exampleTranslation),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
+                ],
               ),
-            ],
-          );
-        },
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-    debugPrint('TRANSLATE ERROR: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Translation error: $e')),
-    );
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Перевод: $translation'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Пример:',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(example),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Перевод примера:',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(exampleTranslation),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('TRANSLATE ERROR: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Translation error: $e')));
+    }
   }
-}
-
-
 
   // ------ UI ------
 
@@ -1176,10 +1248,9 @@ debugPrint('AUDIO FILE PATH: $audioFilePath');
               Text('Chat with $partnerName'),
               Text(
                 '${widget.language} · level ${widget.level}',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(color: Colors.grey.shade600),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelMedium?.copyWith(color: Colors.grey.shade600),
               ),
             ],
           ),
@@ -1220,8 +1291,7 @@ debugPrint('AUDIO FILE PATH: $audioFilePath');
   }
 
   Widget _buildMessageBubble(ChatMessage msg, bool isUser) {
-    final alignment =
-        isUser ? Alignment.centerRight : Alignment.centerLeft;
+    final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
 
     Color bgColor;
     Color textColor;
@@ -1241,35 +1311,34 @@ debugPrint('AUDIO FILE PATH: $audioFilePath');
       name = _detectPartnerNameFromMessages();
     }
 
-// содержимое: для пользователя и блока ошибок — обычный Text,
-// для обычных ответов бота — кликабельные слова
-Widget content;
-if (!isUser && !msg.isCorrections) {
-  final words = msg.text.split(RegExp(r'\s+'));
-  content = Wrap(
-    children: [
-      for (int i = 0; i < words.length; i++)
-        GestureDetector(
-          onTap: () => _onWordTap(words[i]),
-          child: Text(
-            (i == 0 ? '' : ' ') + words[i], // ЯВНО добавляем пробел
-            style: TextStyle(
-              color: textColor,
-              fontSize: 14,
-              decoration: TextDecoration.underline,
-              decorationStyle: TextDecorationStyle.dotted,
+    // содержимое: для пользователя и блока ошибок — обычный Text,
+    // для обычных ответов бота — кликабельные слова
+    Widget content;
+    if (!isUser && !msg.isCorrections) {
+      final words = msg.text.split(RegExp(r'\s+'));
+      content = Wrap(
+        children: [
+          for (int i = 0; i < words.length; i++)
+            GestureDetector(
+              onTap: () => _onWordTap(words[i]),
+              child: Text(
+                (i == 0 ? '' : ' ') + words[i], // ЯВНО добавляем пробел
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                  decorationStyle: TextDecorationStyle.dotted,
+                ),
+              ),
             ),
-          ),
-        ),
-    ],
-  );
-} else {
-  content = Text(
-    msg.text,
-    style: TextStyle(color: textColor, fontSize: 14),
-  );
-}
-
+        ],
+      );
+    } else {
+      content = Text(
+        msg.text,
+        style: TextStyle(color: textColor, fontSize: 14),
+      );
+    }
 
     return Align(
       alignment: alignment,
@@ -1323,7 +1392,10 @@ if (!isUser && !msg.isCorrections) {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1342,7 +1414,10 @@ if (!isUser && !msg.isCorrections) {
                 ),
                 Expanded(
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(26),
@@ -1355,7 +1430,10 @@ if (!isUser && !msg.isCorrections) {
                       ],
                     ),
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       itemCount: _messages.length,
                       itemBuilder: (context, index) {
                         final msg = _messages[index];
@@ -1367,7 +1445,10 @@ if (!isUser && !msg.isCorrections) {
                 ),
                 Container(
                   margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(20),
@@ -1385,44 +1466,45 @@ if (!isUser && !msg.isCorrections) {
             ),
           ),
           const SizedBox(width: 8),
-Expanded(
-  flex: 1, // можно 2, 3, 4 — чем больше, тем шире правая часть
-  child: _buildCharacterStage(look),
-),
-const SizedBox(width: 12),
-
+          Expanded(
+            flex: 1, // можно 2, 3, 4 — чем больше, тем шире правая часть
+            child: _buildCharacterStage(look),
+          ),
+          const SizedBox(width: 12),
         ],
-    ));
+      ),
+    );
   }
 
   Widget _buildCharacterStage(CharacterLook look) {
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(painter: CharacterBackgroundPainter(look)),
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned.fill(
+              child: CustomPaint(painter: CharacterBackgroundPainter(look)),
+            ),
 
-          // Анимация теперь занимает ВСЮ правую панель
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.all(8), // маленький отступ, чтобы не липло к краям
-              child: LoopingPngAnimation(
-                frames: _characterFrames,
-                frameDuration: const Duration(milliseconds: 80),
-                fit: BoxFit.cover, // если хочешь прям во весь рост с обрезкой — поставь cover
+            // Анимация теперь занимает ВСЮ правую панель
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.all(
+                  8,
+                ), // маленький отступ, чтобы не липло к краям
+                child: LoopingPngAnimation(
+                  frames: _characterFrames,
+                  frameDuration: const Duration(milliseconds: 80),
+                  fit: BoxFit
+                      .cover, // если хочешь прям во весь рост с обрезкой — поставь cover
+                ),
               ),
             ),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-
+          ],
+        );
+      },
+    );
+  }
 
   Widget _buildDictionaryTab() {
     if (_savedWords.isEmpty) {
@@ -1432,10 +1514,9 @@ const SizedBox(width: 12),
           child: Text(
             'Вы ещё не добавили слова. Нажмите на слово в чате и выделите его звездой, чтобы сохранить.',
             textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Colors.grey.shade600),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
           ),
         ),
       );
@@ -1473,10 +1554,7 @@ const SizedBox(width: 12),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                'Пример:',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
+              Text('Пример:', style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 4),
               Text(saved.example),
               const SizedBox(height: 8),
@@ -1534,10 +1612,7 @@ const SizedBox(width: 12),
       child: Stack(
         alignment: Alignment.bottomRight,
         children: [
-          CharacterAvatar(
-            look: look,
-            size: 56,
-          ),
+          CharacterAvatar(look: look, size: 56),
           Positioned(
             bottom: 0,
             right: 0,
@@ -1574,9 +1649,7 @@ class CharacterAvatar extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: CharacterFacePainter(look),
-      ),
+      child: CustomPaint(painter: CharacterFacePainter(look)),
     );
   }
 }
@@ -1719,18 +1792,30 @@ class CharacterFacePainter extends CustomPainter {
 
     final cheekPaint = Paint()..color = look.accentColor.withOpacity(0.25);
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(tx(35), ty(75)), width: 18 * scale, height: 12 * scale),
+      Rect.fromCenter(
+        center: Offset(tx(35), ty(75)),
+        width: 18 * scale,
+        height: 12 * scale,
+      ),
       cheekPaint,
     );
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(tx(85), ty(75)), width: 18 * scale, height: 12 * scale),
+      Rect.fromCenter(
+        center: Offset(tx(85), ty(75)),
+        width: 18 * scale,
+        height: 12 * scale,
+      ),
       cheekPaint,
     );
 
     final eyeColor = Colors.black87;
     canvas.drawRRect(
       RRect.fromRectXY(
-        Rect.fromCenter(center: Offset(tx(40), ty(60)), width: 18 * scale, height: 10 * scale),
+        Rect.fromCenter(
+          center: Offset(tx(40), ty(60)),
+          width: 18 * scale,
+          height: 10 * scale,
+        ),
         5 * scale,
         5 * scale,
       ),
@@ -1738,15 +1823,27 @@ class CharacterFacePainter extends CustomPainter {
     );
     canvas.drawRRect(
       RRect.fromRectXY(
-        Rect.fromCenter(center: Offset(tx(78), ty(60)), width: 18 * scale, height: 10 * scale),
+        Rect.fromCenter(
+          center: Offset(tx(78), ty(60)),
+          width: 18 * scale,
+          height: 10 * scale,
+        ),
         5 * scale,
         5 * scale,
       ),
       Paint()..color = eyeColor,
     );
 
-    canvas.drawCircle(Offset(tx(46), ty(56)), 3 * scale, Paint()..color = Colors.white70);
-    canvas.drawCircle(Offset(tx(84), ty(56)), 3 * scale, Paint()..color = Colors.white70);
+    canvas.drawCircle(
+      Offset(tx(46), ty(56)),
+      3 * scale,
+      Paint()..color = Colors.white70,
+    );
+    canvas.drawCircle(
+      Offset(tx(84), ty(56)),
+      3 * scale,
+      Paint()..color = Colors.white70,
+    );
 
     final browPaint = Paint()
       ..color = hairShade
@@ -1781,7 +1878,11 @@ class CharacterFacePainter extends CustomPainter {
     final seamPaint = Paint()
       ..color = shirtHighlight
       ..strokeWidth = 2 * scale;
-    canvas.drawLine(Offset(tx(50), ty(118)), Offset(tx(70), ty(118)), seamPaint);
+    canvas.drawLine(
+      Offset(tx(50), ty(118)),
+      Offset(tx(70), ty(118)),
+      seamPaint,
+    );
   }
 
   @override
@@ -1827,9 +1928,17 @@ class CharacterBackgroundPainter extends CustomPainter {
     final hillPath = Path()
       ..moveTo(0, size.height * 0.74)
       ..quadraticBezierTo(
-          size.width * 0.2, size.height * 0.6, size.width * 0.45, size.height * 0.7)
+        size.width * 0.2,
+        size.height * 0.6,
+        size.width * 0.45,
+        size.height * 0.7,
+      )
       ..quadraticBezierTo(
-          size.width * 0.7, size.height * 0.92, size.width, size.height * 0.78)
+        size.width * 0.7,
+        size.height * 0.92,
+        size.width,
+        size.height * 0.78,
+      )
       ..lineTo(size.width, size.height)
       ..lineTo(0, size.height)
       ..close();
@@ -1847,4 +1956,3 @@ class CharacterBackgroundPainter extends CustomPainter {
   bool shouldRepaint(covariant CharacterBackgroundPainter oldDelegate) =>
       oldDelegate.look != look;
 }
-
