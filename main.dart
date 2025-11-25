@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+
 
 void main() {
   runApp(const LanguageTutorApp());
@@ -834,13 +836,19 @@ class _ChatScreenState extends State<ChatScreen> {
   late final AudioPlayer _audioPlayer;
   late final List<String> _characterFrames;
 
+  
+  // рекордер для голосового ввода
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    for (final f in _characterFrames) {
-      precacheImage(AssetImage(f), context);
-    }
+  void dispose() {
+    _inputController.dispose();
+    _audioPlayer.dispose();
+    _audioRecorder.dispose();
+    super.dispose();
   }
+
 
   // прогресс по словам пользователя
   int _userWordCount = 0;
@@ -876,12 +884,6 @@ class _ChatScreenState extends State<ChatScreen> {
     _startConversation();
   }
 
-  @override
-  void dispose() {
-    _inputController.dispose();
-    _audioPlayer.dispose();
-    super.dispose();
-  }
 
   Future<void> _startConversation() async {
     await _sendToBackend(initial: true);
@@ -976,6 +978,121 @@ class _ChatScreenState extends State<ChatScreen> {
       });
     }
   }
+
+  Future<void> _startRecording() async {
+    final hasPerm = await _audioRecorder.hasPermission();
+    debugPrint('STT: hasPermission = $hasPerm');
+    if (!hasPerm) return;
+
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/input_${DateTime.now().millisecondsSinceEpoch}.wav';
+
+    final config = RecordConfig(
+      encoder: AudioEncoder.wav,
+      sampleRate: 16000,
+      numChannels: 1,
+    );
+
+    await _audioRecorder.start(config, path: path);
+
+  // 🟣 КРИТИЧЕСКОЕ ДОПОЛНЕНИЕ ДЛЯ macOS !!!
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    setState(() {
+      _isRecording = true;
+    });
+  }
+
+
+
+
+  Future<void> _stopRecordingAndSend() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final path = await _audioRecorder.stop(); // вернёт путь к файлу
+    setState(() {
+      _isRecording = false;
+    });
+
+    if (path == null) {
+      debugPrint('STT: stop() returned null path');
+      return;
+    }
+
+    debugPrint('STT: recorded file = $path');
+
+
+
+    // После прослушивания отправляем на backend
+    await _sendAudioToBackend(File(path));
+  }
+
+
+    String _languageCodeFromName(String language) {
+    switch (language) {
+      case 'English':
+        return 'en';
+      case 'German':
+        return 'de';
+      case 'French':
+        return 'fr';
+      case 'Spanish':
+        return 'es';
+      case 'Italian':
+        return 'it';
+      case 'Korean':
+        return 'ko';
+      case 'Russian':
+        return 'ru';
+      default:
+        return 'en';
+    }
+  }
+
+
+  Future<void> _sendAudioToBackend(File file) async {
+    final langCode = _languageCodeFromName(widget.language);
+
+    final uri = Uri.parse(
+      'http://144.172.116.101:8000/stt?language_code=$langCode',
+    );
+
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(
+        await http.MultipartFile.fromPath('file', file.path),
+      );
+
+    try {
+      final streamed = await request.send();
+      final body = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode == 200) {
+        final jsonMap = jsonDecode(body) as Map<String, dynamic>;
+        final recognized = (jsonMap['text'] ?? '') as String;
+
+        if (!mounted) return;
+        setState(() {
+          _inputController.text = recognized;
+        });
+
+        // Если хочешь сразу отправлять после распознавания:
+        // await _sendUserMessage();
+      } else {
+        print('STT error: ${streamed.statusCode} $body');
+      }
+    } catch (e) {
+      print('STT exception: $e');
+    }
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      await _stopRecordingAndSend();
+    } else {
+      await _startRecording();
+    }
+  }
+
 
   void _updateProgress() {
     while (_currentLevel <= _levelTargets.length &&
@@ -1589,6 +1706,16 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          // Кнопка микрофона
+          IconButton(
+            icon: Icon(_isRecording ? Icons.mic : Icons.mic_none),
+            color: _isRecording
+                ? Colors.red
+                : Theme.of(context).colorScheme.primary,
+            onPressed: _isSending ? null : _toggleRecording,
+          ),
+          const SizedBox(width: 4),
+          // Кнопка отправки текста
           IconButton(
             icon: _isSending
                 ? const SizedBox(
@@ -1604,6 +1731,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
 
   Widget _buildCharacterAvatar() {
     final look = _characterLook;
