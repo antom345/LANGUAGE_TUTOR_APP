@@ -223,10 +223,14 @@ class _AgeScreenState extends State<AgeScreen> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFEEF2FF), Color(0xFFE0F7FA)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          gradient: RadialGradient(
+            colors: [
+              Color(0xFFEFF3FF),
+              Color(0xFFE9F7F5),
+              Color(0xFFFDF1FF),
+            ],
+            center: Alignment(-0.6, -0.6),
+            radius: 1.2,
           ),
         ),
         child: SafeArea(
@@ -256,13 +260,17 @@ class _AgeScreenState extends State<AgeScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      colors: [Colors.white, Color(0xFFF7FAFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 18,
-                        offset: const Offset(0, 10),
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
                       ),
                     ],
                   ),
@@ -336,22 +344,11 @@ class _AgeScreenState extends State<AgeScreen> {
                 const Spacer(),
                 Row(
                   children: [
-                    CharacterAvatar(
-                      look: characterLookFor('English', 'female'),
-                      size: 70,
-                    ),
+                    Expanded(child: _languageAvatarStrip()),
                     const SizedBox(width: 12),
-                    CharacterAvatar(
-                      look: characterLookFor('Spanish', 'male'),
-                      size: 70,
-                    ),
-                    const Spacer(),
                     SizedBox(
                       width: 160,
-                      child: ElevatedButton(
-                        onPressed: _continue,
-                        child: const Text('Далее'),
-                      ),
+                      child: PrimaryCtaButton(label: 'Далее', onTap: _continue),
                     ),
                   ],
                 ),
@@ -360,6 +357,28 @@ class _AgeScreenState extends State<AgeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _languageAvatarStrip() {
+    final samples = [
+      characterLookFor('English', 'female'),
+      characterLookFor('German', 'male'),
+      characterLookFor('French', 'female'),
+      characterLookFor('Spanish', 'male'),
+      characterLookFor('Italian', 'male'),
+      characterLookFor('Korean', 'female'),
+    ];
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      children: [
+        for (final look in samples)
+          CharacterAvatar(
+            look: look,
+            size: 56,
+          ),
+      ],
     );
   }
 }
@@ -389,10 +408,14 @@ class _GenderScreenState extends State<GenderScreen> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFFDE7F3)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          gradient: RadialGradient(
+            colors: [
+              Color(0xFFEAF4FF),
+              Color(0xFFFDF2F8),
+              Color(0xFFE7FFF9),
+            ],
+            center: Alignment(0.6, -0.6),
+            radius: 1.1,
           ),
         ),
         child: SafeArea(
@@ -422,13 +445,17 @@ class _GenderScreenState extends State<GenderScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      colors: [Colors.white, Color(0xFFF8FBFF)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 18,
-                        offset: const Offset(0, 10),
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
                       ),
                     ],
                   ),
@@ -470,22 +497,11 @@ class _GenderScreenState extends State<GenderScreen> {
                 const Spacer(),
                 Row(
                   children: [
-                    CharacterAvatar(
-                      look: characterLookFor('German', 'male'),
-                      size: 70,
-                    ),
+                    Expanded(child: _languageAvatarStrip()),
                     const SizedBox(width: 12),
-                    CharacterAvatar(
-                      look: characterLookFor('French', 'female'),
-                      size: 70,
-                    ),
-                    const Spacer(),
                     SizedBox(
                       width: 160,
-                      child: ElevatedButton(
-                        onPressed: _continue,
-                        child: const Text('Далее'),
-                      ),
+                      child: PrimaryCtaButton(label: 'Далее', onTap: _continue),
                     ),
                   ],
                 ),
@@ -508,14 +524,22 @@ class _GenderScreenState extends State<GenderScreen> {
       onTap: () => setState(() => _gender = value),
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.12) : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(14),
+          color: selected ? color.withOpacity(0.12) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? color : Colors.grey.shade300,
-            width: 1.4,
+            color: selected ? color : Colors.grey.shade200,
+            width: 1.2,
           ),
+          boxShadow: [
+            if (selected)
+              BoxShadow(
+                color: color.withOpacity(0.18),
+                blurRadius: 14,
+                offset: const Offset(0, 8),
+              ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -532,6 +556,28 @@ class _GenderScreenState extends State<GenderScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _languageAvatarStrip() {
+    final samples = [
+      characterLookFor('English', 'female'),
+      characterLookFor('German', 'male'),
+      characterLookFor('French', 'female'),
+      characterLookFor('Spanish', 'female'),
+      characterLookFor('Italian', 'male'),
+      characterLookFor('Korean', 'female'),
+    ];
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      children: [
+        for (final look in samples)
+          CharacterAvatar(
+            look: look,
+            size: 56,
+          ),
+      ],
     );
   }
 }
@@ -591,140 +637,385 @@ class ChatListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Диалоги'), centerTitle: true),
-      body: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: chats.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) {
-                final chat = chats[i];
-                final name = chat['name'] as String;
-                final lang = chat['language'] as String;
-                final partnerGender = chat['partnerGender'] as String;
-                final color = chat['color'] as Color;
-                final look = characterLookFor(lang, partnerGender);
-
-                return Card(
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () async {
-                      final level = await _pickLevel(context);
-                      if (level == null) return;
-                      if (!context.mounted) return;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ChatScreen(
-                            language: lang,
-                            level: level,
-                            topic: 'General conversation',
-                            userGender: userGender,
-                            userAge: userAge,
-                            partnerGender: partnerGender,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(6),
-                            child: CharacterAvatar(look: look, size: 48),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '$name ($lang)',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Нажмите чтобы начать диалог',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: Colors.grey.shade600),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.grey.shade400,
-                            size: 16,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            colors: [Color(0xFFF2F5FF), Color(0xFFE8F7F4), Color(0xFFFDF2FF)],
+            center: Alignment(-0.4, -0.2),
+            radius: 1.4,
           ),
-          Expanded(
-            flex: 3,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF5F7FB), Color(0xFFE8EAF6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      size: 56,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Выберите чат слева',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey.shade600,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: chats.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, i) {
+                  final chat = chats[i];
+                  final name = chat['name'] as String;
+                  final lang = chat['language'] as String;
+                  final partnerGender = chat['partnerGender'] as String;
+                  final color = chat['color'] as Color;
+                  final look = characterLookFor(lang, partnerGender);
+                  final flag = _flagForLanguage(lang);
+
+                  return Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(24),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      splashColor: color.withOpacity(0.12),
+                      highlightColor: color.withOpacity(0.06),
+                      onTap: () async {
+                        final level = await _pickLevel(context);
+                        if (level == null) return;
+                        if (!context.mounted) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              language: lang,
+                              level: level,
+                              topic: 'General conversation',
+                              userGender: userGender,
+                              userAge: userAge,
+                              partnerGender: partnerGender,
+                            ),
+                          ),
+                        );
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              color.withOpacity(0.12),
+                              Colors.white.withOpacity(0.95),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 14,
+                              offset: const Offset(0, 8),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            _DialogAvatar(
+                              look: look,
+                              accent: color,
+                              flag: flag,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '$name ($lang)',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Нажмите чтобы начать диалог',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              color: color.withOpacity(0.8),
+                              size: 16,
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(8, 12, 12, 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF9FBFF), Color(0xFFE8EAF6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: 56,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Выберите чат слева',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.grey.shade600,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  String _flagForLanguage(String lang) {
+    switch (lang) {
+      case 'English':
+        return '🇺🇸';
+      case 'German':
+        return '🇩🇪';
+      case 'French':
+        return '🇫🇷';
+      case 'Spanish':
+        return '🇪🇸';
+      case 'Italian':
+        return '🇮🇹';
+      case 'Korean':
+        return '🇰🇷';
+      default:
+        return '🏳️';
+    }
   }
 
   Future<String?> _pickLevel(BuildContext context) {
     const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
     return showDialog<String>(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Выберите уровень языка'),
-        children: [
-          for (final lvl in levels)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(lvl),
-              child: Text(lvl),
+      builder: (context) {
+        final theme = Theme.of(context);
+        final accent = theme.colorScheme.primary;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.14),
+                      blurRadius: 30,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: accent.withOpacity(0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.emoji_objects_outlined,
+                                color: accent,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Выберите уровень языка',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          splashRadius: 20,
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final lvl in levels)
+                          _LevelChip(
+                            label: lvl,
+                            accent: accent,
+                            onTap: () => Navigator.of(context).pop(lvl),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-        ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DialogAvatar extends StatelessWidget {
+  final CharacterLook look;
+  final Color accent;
+  final String flag;
+
+  const _DialogAvatar({
+    required this.look,
+    required this.accent,
+    required this.flag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [accent.withOpacity(0.22), accent.withOpacity(0.05)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
+          ),
+          padding: const EdgeInsets.all(10),
+          child: CharacterAvatar(look: look, size: 52),
+        ),
+        Positioned(
+          bottom: -6,
+          left: -6,
+          child: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              flag,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LevelChip extends StatefulWidget {
+  final String label;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _LevelChip({
+    required this.label,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  State<_LevelChip> createState() => _LevelChipState();
+}
+
+class _LevelChipState extends State<_LevelChip> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1,
+        duration: const Duration(milliseconds: 140),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.accent.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: widget.accent.withOpacity(0.28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              color: darken(widget.accent, 0.24),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -870,12 +1161,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final frameCount = (folder == 'default') ? 450 : 419;
 
     return List.generate(frameCount, (i) {
-      final n = i + 1; // 1..frameCount
-      final name = n.toString().padLeft(4, '0'); // "0001"
+      final n = i + 1;
+      final name = n.toString().padLeft(4, '0');
       return 'assets/anim/$folder/$name.png';
     });
   }
-
   @override
   void initState() {
     super.initState();
@@ -1413,18 +1703,21 @@ class _ChatScreenState extends State<ChatScreen> {
     Color bgColor;
     Color textColor;
     String name;
+    final accent = _characterLook.accentColor;
+    final userBg = const Color(0xFFE8F0FF);
+    final userText = const Color(0xFF0F1C3F);
 
     if (msg.isCorrections) {
-      bgColor = const Color(0xFFFFF3CD); // жёлтый для ошибок
-      textColor = const Color(0xFF665200);
+      bgColor = const Color(0xFFFFF7E0);
+      textColor = const Color(0xFF6A4A00);
       name = 'Corrections';
     } else if (isUser) {
-      bgColor = const Color(0xFF4B5BB5);
-      textColor = Colors.white;
+      bgColor = userBg;
+      textColor = userText;
       name = 'You';
     } else {
-      bgColor = const Color(0xFFE4E7FF);
-      textColor = const Color(0xFF222222);
+      bgColor = accent.withOpacity(0.16);
+      textColor = const Color(0xFF1C1C1C);
       name = _detectPartnerNameFromMessages();
     }
 
@@ -1460,11 +1753,50 @@ class _ChatScreenState extends State<ChatScreen> {
     return Align(
       alignment: alignment,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.72,
+        ),
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(16),
+          color: msg.isCorrections
+              ? bgColor
+              : isUser
+                  ? bgColor
+                  : null,
+          gradient: !isUser && !msg.isCorrections
+              ? LinearGradient(
+                  colors: [
+                    lighten(accent, 0.2).withOpacity(0.65),
+                    bgColor,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          border: isUser
+              ? Border.all(color: darken(userBg, 0.08).withOpacity(0.6))
+              : null,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(22),
+            topRight: const Radius.circular(22),
+            bottomLeft: Radius.circular(isUser ? 22 : 8),
+            bottomRight: Radius.circular(isUser ? 8 : 22),
+          ),
+          boxShadow: [
+            if (isUser)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            if (!isUser && !msg.isCorrections)
+              BoxShadow(
+                color: accent.withOpacity(0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: isUser
@@ -1476,7 +1808,7 @@ class _ChatScreenState extends State<ChatScreen> {
               style: TextStyle(
                 color: msg.isCorrections
                     ? Colors.black54
-                    : (isUser ? Colors.white70 : Colors.grey.shade700),
+                    : Colors.grey.shade700,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
@@ -1484,6 +1816,38 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(height: 4),
             content,
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    final accent = _characterLook.accentColor;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: accent.withOpacity(0.16),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(
+            3,
+            (i) => AnimatedContainer(
+              duration: Duration(milliseconds: 400 + (i * 120)),
+              curve: Curves.easeInOut,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: 8,
+              height: _isSending ? 12 : 8,
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.9 - i * 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1513,20 +1877,77 @@ class _ChatScreenState extends State<ChatScreen> {
                     horizontal: 16,
                     vertical: 12,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      LinearProgressIndicator(
-                        value: _progressValue,
-                        minHeight: 8,
-                        borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          lighten(look.accentColor, 0.25),
+                          Colors.white,
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _progressLabel,
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                    ],
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: look.accentColor.withOpacity(0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.8),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.star_rate_rounded,
+                            color: look.accentColor,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              LinearProgressIndicator(
+                                value: _progressValue,
+                                minHeight: 8,
+                                borderRadius: BorderRadius.circular(8),
+                                backgroundColor:
+                                    Colors.white.withOpacity(0.6),
+                                color: look.accentColor,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _progressLabel,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(
+                                      color: Colors.grey.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${_userWordCount}/${_currentLevel > _levelTargets.length ? _userWordCount : _levelTargets[_currentLevel - 1]}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Expanded(
@@ -1551,8 +1972,14 @@ class _ChatScreenState extends State<ChatScreen> {
                         horizontal: 16,
                         vertical: 12,
                       ),
-                      itemCount: _messages.length,
+                      itemCount: _messages.length +
+                          ((_isSending && _messages.isNotEmpty) ? 1 : 0),
                       itemBuilder: (context, index) {
+                        final showTyping =
+                            _isSending && _messages.isNotEmpty;
+                        if (showTyping && index == _messages.length) {
+                          return _buildTypingIndicator();
+                        }
                         final msg = _messages[index];
                         final isUser = msg.role == 'user';
                         return _buildMessageBubble(msg, isUser);
@@ -1602,18 +2029,131 @@ class _ChatScreenState extends State<ChatScreen> {
             Positioned.fill(
               child: CustomPaint(painter: CharacterBackgroundPainter(look)),
             ),
-
-            // Анимация теперь занимает ВСЮ правую панель
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: constraints.maxHeight * 0.08,
+                      left: constraints.maxWidth * 0.1,
+                      child: Container(
+                        width: constraints.maxWidth * 0.32,
+                        height: constraints.maxWidth * 0.32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              lighten(look.primaryColor, 0.4)
+                                  .withOpacity(0.35),
+                              Colors.white.withOpacity(0.0),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: look.primaryColor.withOpacity(0.2),
+                              blurRadius: 30,
+                              offset: const Offset(0, 18),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: constraints.maxHeight * 0.12,
+                      right: constraints.maxWidth * 0.05,
+                      child: Container(
+                        width: constraints.maxWidth * 0.28,
+                        height: constraints.maxWidth * 0.28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              lighten(look.accentColor, 0.35)
+                                  .withOpacity(0.4),
+                              Colors.white.withOpacity(0.0),
+                            ],
+                            begin: Alignment.bottomRight,
+                            end: Alignment.topLeft,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: constraints.maxWidth * 0.82,
+                  height: constraints.maxWidth * 0.82,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        lighten(look.primaryColor, 0.35).withOpacity(0.5),
+                        Colors.white.withOpacity(0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: constraints.maxHeight * 0.08,
+              child: Container(
+                width: constraints.maxWidth * 0.38,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(60),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 24,
+                      spreadRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: constraints.maxHeight * 0.1,
+              child: Container(
+                width: constraints.maxWidth * 0.52,
+                height: constraints.maxHeight * 0.22,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.65),
+                      lighten(look.accentColor, 0.28).withOpacity(0.35),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             Positioned.fill(
               child: Padding(
                 padding: const EdgeInsets.all(
                   8,
-                ), // маленький отступ, чтобы не липло к краям
+                ),
                 child: LoopingPngAnimation(
                   frames: _characterFrames,
                   frameDuration: const Duration(milliseconds: 80),
-                  fit: BoxFit
-                      .cover, // если хочешь прям во весь рост с обрезкой — поставь cover
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
@@ -1645,44 +2185,96 @@ class _ChatScreenState extends State<ChatScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final saved = _savedWords[index];
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${saved.word} — ${saved.translation}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Удалить из словаря',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _removeSavedWord(saved.word),
+        return Stack(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF7FBFF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text('Пример:', style: Theme.of(context).textTheme.labelMedium),
-              const SizedBox(height: 4),
-              Text(saved.example),
-              const SizedBox(height: 8),
-              Text(
-                'Перевод примера:',
-                style: Theme.of(context).textTheme.labelMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 36),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          saved.word,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          saved.translation,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Пример',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(saved.example),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Перевод примера',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          saved.exampleTranslation,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(saved.exampleTranslation),
-            ],
-          ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                tooltip: 'Удалить из словаря',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => _removeSavedWord(saved.word),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -1698,9 +2290,22 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _inputController,
               minLines: 1,
               maxLines: 4,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Write a message…',
-                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
               ),
               onSubmitted: (_) => _sendUserMessage(),
             ),
@@ -1766,6 +2371,68 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
+class PrimaryCtaButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const PrimaryCtaButton({super.key, required this.label, required this.onTap});
+
+  @override
+  State<PrimaryCtaButton> createState() => _PrimaryCtaButtonState();
+}
+
+class _PrimaryCtaButtonState extends State<PrimaryCtaButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: _pressed ? 0.9 : 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color, darken(color, 0.12)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.3),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              widget.label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class CharacterAvatar extends StatelessWidget {
   final CharacterLook look;
   final double size;
@@ -1774,10 +2441,65 @@ class CharacterAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    final gradient = LinearGradient(
+      colors: [
+        lighten(look.primaryColor, 0.12),
+        lighten(look.accentColor, 0.08),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+    return Container(
       width: size,
       height: size,
-      child: CustomPaint(painter: CharacterFacePainter(look)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: gradient,
+        boxShadow: [
+          BoxShadow(
+            color: look.accentColor.withOpacity(0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Text(
+            look.badgeText,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: darken(look.accentColor, 0.28),
+              fontSize: size * 0.32,
+            ),
+          ),
+          Positioned(
+            bottom: size * 0.16,
+            right: size * 0.2,
+            child: Container(
+              width: size * 0.24,
+              height: size * 0.24,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.person,
+                size: size * 0.16,
+                color: darken(look.accentColor, 0.15),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
