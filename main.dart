@@ -799,26 +799,31 @@ class ChatListScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(24),
-                      splashColor: color.withOpacity(0.12),
-                      highlightColor: color.withOpacity(0.06),
-                      onTap: () async {
-                        final level = await _pickLevel(context);
-                        if (level == null) return;
-                        if (!context.mounted) return;
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ChatScreen(
-                              language: lang,
-                              level: level,
-                              topic: 'General conversation',
-                              userGender: userGender,
-                              userAge: userAge,
-                              partnerGender: partnerGender,
-                            ),
+                    splashColor: color.withOpacity(0.12),
+                    highlightColor: color.withOpacity(0.06),
+                    onTap: () async {
+                      final level = await _pickLevel(context);
+                      if (level == null) return;
+                      if (!context.mounted) return;
+
+                      final chosenLevel =
+                          await _offerPlacementChoice(context, lang, level);
+                      if (!context.mounted) return;
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            language: lang,
+                            level: chosenLevel,
+                            topic: 'General conversation',
+                            userGender: userGender,
+                            userAge: userAge,
+                            partnerGender: partnerGender,
                           ),
-                        );
-                      },
-                      child: AnimatedContainer(
+                        ),
+                      );
+                    },
+                    child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -1039,6 +1044,41 @@ class ChatListScreen extends StatelessWidget {
       },
     );
   }
+
+  Future<String> _offerPlacementChoice(
+      BuildContext context, String language, String currentLevel) async {
+    String? action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Хотите пройти короткий тест?'),
+        content: const Text(
+          'Это займет пару минут и поможет точнее подобрать курс. Можно пропустить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('skip'),
+            child: const Text('Пропустить'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop('test'),
+            child: const Text('Пройти тест'),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'test') {
+      final testedLevel = await Navigator.of(context).push<String>(
+        MaterialPageRoute(
+          builder: (_) => PlacementTestScreen(language: language),
+        ),
+      );
+      return testedLevel ?? currentLevel;
+    }
+
+    return currentLevel;
+  }
 }
 
 class _DialogAvatar extends StatelessWidget {
@@ -1094,6 +1134,44 @@ class _DialogAvatar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CoursePill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _CoursePill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.32)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: darken(color, 0.18)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: darken(color, 0.18),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2436,113 +2514,197 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
   }
 
   Widget _buildCourseTab() {
-    if (_isLoadingCourse && _coursePlan == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    final look = _characterLook;
 
-    if (_courseError != null && _coursePlan == null) {
+    if (_isLoadingCourse && _coursePlan == null) {
       return Center(
-        child: Padding(
+        child: Container(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _courseError!,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _loadCoursePlan,
-                child: const Text('Повторить'),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                lighten(look.primaryColor, 0.25),
+                Colors.white,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
+          child: const CircularProgressIndicator(),
         ),
       );
     }
 
-if (_coursePlan == null) {
-  return Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Сначала пройди короткий тест, чтобы определить твой уровень языка.',
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () async {
-              final level = await Navigator.push<String>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PlacementTestScreen(
-                    language: widget.language,
-                  ),
+    if (_coursePlan == null) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    lighten(look.primaryColor, 0.3),
+                    lighten(look.accentColor, 0.2),
+                    Colors.white,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              );
-
-              if (level != null) {
-                // после теста генерируем план по найденному уровню
-                _loadCoursePlan(overrideLevelHint: level);
-              }
-            },
-            child: const Text('Пройти тест уровня'),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () {
-              // если пользователь не хочет тест – используем тот уровень, который уже выбрал при старте
-              _loadCoursePlan();
-            },
-            child: const Text('Пропустить тест и сразу сгенерировать курс'),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.85),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.auto_graph_rounded,
+                          color: look.accentColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Личный курс ${widget.language}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Уровень: ${widget.level}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _CoursePill(
+                        icon: Icons.flash_on,
+                        label: 'Быстрый план из 5 уровней',
+                        color: look.accentColor,
+                      ),
+                      const SizedBox(width: 8),
+                      _CoursePill(
+                        icon: Icons.menu_book_outlined,
+                        label: 'Словарь и грамматика',
+                        color: look.primaryColor,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Получите программу, адаптированную под ваш уровень, возраст и цели, и проходите уроки в удобном темпе.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: Colors.grey.shade800),
+                  ),
+                  if (_courseError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _courseError!,
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  PrimaryCtaButton(
+                    label: 'Сгенерировать курс',
+                    onTap: _loadCoursePlan,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final plan = _coursePlan!;
 
-    return ListView.builder(
+    return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: plan.levels.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final level = plan.levels[index];
-        return Card(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          margin: const EdgeInsets.only(bottom: 12),
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                lighten(look.primaryColor, 0.28),
+                Colors.white,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
           child: ExpansionTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: Text(
-              'Level ${level.levelIndex}: ${level.title}',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              'Уровень ${level.levelIndex}: ${level.title}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             subtitle: Text(level.description),
             childrenPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
-              if (level.targetGrammar.isNotEmpty)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Grammar: ${level.targetGrammar.join(', ')}',
-                    style: const TextStyle(fontSize: 13, color: Colors.black54),
-                  ),
-                ),
-              if (level.targetVocab.isNotEmpty)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Vocab: ${level.targetVocab.join(', ')}',
-                    style: const TextStyle(fontSize: 13, color: Colors.black54),
-                  ),
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (level.targetGrammar.isNotEmpty)
+                    _CoursePill(
+                      icon: Icons.rule_folder_outlined,
+                      label: 'Grammar: ${level.targetGrammar.join(', ')}',
+                      color: look.accentColor,
+                    ),
+                  if (level.targetVocab.isNotEmpty)
+                    _CoursePill(
+                      icon: Icons.auto_stories_outlined,
+                      label: 'Vocab: ${level.targetVocab.join(', ')}',
+                      color: look.primaryColor,
+                    ),
+                ],
+              ),
               const SizedBox(height: 8),
               ListView.separated(
                 shrinkWrap: true,
@@ -2555,7 +2717,7 @@ if (_coursePlan == null) {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    tileColor: Colors.grey.shade50,
+                    tileColor: Colors.white.withOpacity(0.85),
                     title: Text(lesson.title),
                     subtitle: Text(
                       lesson.description,
