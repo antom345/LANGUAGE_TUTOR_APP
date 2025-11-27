@@ -61,6 +61,138 @@ class SavedWord {
   });
 }
 
+
+class LessonPlan {
+  final String id;
+  final String title;
+  final String type;
+  final String description;
+
+  LessonPlan({
+    required this.id,
+    required this.title,
+    required this.type,
+    required this.description,
+  });
+
+  factory LessonPlan.fromJson(Map<String, dynamic> json) {
+    return LessonPlan(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      type: json['type'] as String,
+      description: json['description'] as String,
+    );
+  }
+}
+
+class LessonExercise {
+  final String id;
+  final String type; // пока всегда "multiple_choice"
+  final String question;
+  final List<String> options;
+  final int correctIndex;
+  final String explanation;
+
+  LessonExercise({
+    required this.id,
+    required this.type,
+    required this.question,
+    required this.options,
+    required this.correctIndex,
+    required this.explanation,
+  });
+
+  factory LessonExercise.fromJson(Map<String, dynamic> json) {
+    return LessonExercise(
+      id: json['id'] as String,
+      type: json['type'] as String,
+      question: json['question'] as String,
+      options: (json['options'] as List).cast<String>(),
+      correctIndex: json['correct_index'] as int,
+      explanation: json['explanation'] as String,
+    );
+  }
+}
+
+class LessonContentModel {
+  final String lessonId;
+  final String lessonTitle;
+  final String description;
+  final List<LessonExercise> exercises;
+
+  LessonContentModel({
+    required this.lessonId,
+    required this.lessonTitle,
+    required this.description,
+    required this.exercises,
+  });
+
+  factory LessonContentModel.fromJson(Map<String, dynamic> json) {
+    final exList = (json['exercises'] as List).cast<Map<String, dynamic>>();
+    return LessonContentModel(
+      lessonId: json['lesson_id'] as String,
+      lessonTitle: json['lesson_title'] as String,
+      description: json['description'] as String,
+      exercises: exList.map((e) => LessonExercise.fromJson(e)).toList(),
+    );
+  }
+}
+
+
+class CourseLevelPlan {
+  final int levelIndex;
+  final String title;
+  final String description;
+  final List<String> targetGrammar;
+  final List<String> targetVocab;
+  final List<LessonPlan> lessons;
+
+  CourseLevelPlan({
+    required this.levelIndex,
+    required this.title,
+    required this.description,
+    required this.targetGrammar,
+    required this.targetVocab,
+    required this.lessons,
+  });
+
+  factory CourseLevelPlan.fromJson(Map<String, dynamic> json) {
+    final grammar = (json['target_grammar'] as List).cast<String>();
+    final vocab = (json['target_vocab'] as List).cast<String>();
+    final lessonsJson = (json['lessons'] as List).cast<Map<String, dynamic>>();
+
+    return CourseLevelPlan(
+      levelIndex: json['level_index'] as int,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      targetGrammar: grammar,
+      targetVocab: vocab,
+      lessons: lessonsJson.map((e) => LessonPlan.fromJson(e)).toList(),
+    );
+  }
+}
+
+class CoursePlan {
+  final String language;
+  final String overallLevel;
+  final List<CourseLevelPlan> levels;
+
+  CoursePlan({
+    required this.language,
+    required this.overallLevel,
+    required this.levels,
+  });
+
+  factory CoursePlan.fromJson(Map<String, dynamic> json) {
+    final levelsJson = (json['levels'] as List).cast<Map<String, dynamic>>();
+    return CoursePlan(
+      language: json['language'] as String,
+      overallLevel: json['overall_level'] as String,
+      levels: levelsJson.map((e) => CourseLevelPlan.fromJson(e)).toList(),
+    );
+  }
+}
+
 class CharacterLook {
   final Color primaryColor; // background tint
   final Color accentColor;
@@ -1146,6 +1278,12 @@ class _ChatScreenState extends State<ChatScreen> {
   int _currentLevel = 1;
   final List<int> _levelTargets = [50, 150, 300, 500, 1000];
 
+    // план курса
+  CoursePlan? _coursePlan;
+  bool _isLoadingCourse = false;
+  String? _courseError;
+
+
   CharacterLook get _characterLook =>
       characterLookFor(widget.language, widget.partnerGender);
   List<String> _buildCharacterFrames() {
@@ -1268,6 +1406,59 @@ class _ChatScreenState extends State<ChatScreen> {
       });
     }
   }
+
+Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
+  if (_isLoadingCourse || _coursePlan != null) return;
+
+  setState(() {
+    _isLoadingCourse = true;
+    _courseError = null;
+  });
+
+  try {
+    final uri = Uri.parse('http://144.172.116.101:8000/generate_course_plan');
+
+    final gender =
+        widget.userGender == 'unspecified' ? null : widget.userGender;
+
+    final body = jsonEncode({
+      "language": widget.language,
+      // если тест вернул уровень – используем его, иначе старый widget.level
+      "level_hint": overrideLevelHint ?? widget.level,
+      "age": widget.userAge,
+      "gender": gender,
+      "goals":
+          "Improve ${widget.language} through conversation and vocabulary.",
+    });
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      setState(() {
+        _coursePlan = CoursePlan.fromJson(data);
+      });
+    } else {
+      setState(() {
+        _courseError = 'Server error: ${response.statusCode}';
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _courseError = 'Error: $e';
+    });
+  } finally {
+    setState(() {
+      _isLoadingCourse = false;
+    });
+  }
+}
+
+
 
   Future<void> _startRecording() async {
     final hasPerm = await _audioRecorder.hasPermission();
@@ -1635,7 +1826,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final partnerName = _detectPartnerNameFromMessages();
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           leadingWidth: 120,
@@ -1652,12 +1843,13 @@ class _ChatScreenState extends State<ChatScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Chat with $partnerName'),
+              Text(partnerName),
               Text(
                 '${widget.language} · level ${widget.level}',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium?.copyWith(color: Colors.grey.shade600),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: Colors.grey.shade600),
               ),
             ],
           ),
@@ -1665,6 +1857,7 @@ class _ChatScreenState extends State<ChatScreen> {
             tabs: [
               Tab(text: 'Chat'),
               Tab(text: 'Dictionary'),
+              Tab(text: 'Course'),
             ],
           ),
         ),
@@ -1672,11 +1865,13 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             SafeArea(child: _buildChatTab()),
             SafeArea(child: _buildDictionaryTab()),
+            SafeArea(child: _buildCourseTab()),
           ],
         ),
       ),
     );
   }
+
 
   String _detectPartnerNameFromMessages() {
     if (widget.language == 'German') {
@@ -2163,6 +2358,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+
   Widget _buildDictionaryTab() {
     if (_savedWords.isEmpty) {
       return Center(
@@ -2171,9 +2367,10 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Text(
             'Вы ещё не добавили слова. Нажмите на слово в чате и выделите его звездой, чтобы сохранить.',
             textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Colors.grey.shade600),
           ),
         ),
       );
@@ -2185,100 +2382,213 @@ class _ChatScreenState extends State<ChatScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final saved = _savedWords[index];
-        return Stack(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFFFFFF), Color(0xFFF7FBFF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+
+        return Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  saved.word,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, 10),
+                const SizedBox(height: 4),
+                Text(
+                  saved.translation,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                ),
+                if (saved.example.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    saved.example,
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 36),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          saved.word,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          saved.translation,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Пример',
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(saved.example),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Перевод примера',
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          saved.exampleTranslation,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.grey.shade700),
-                        ),
-                      ],
-                    ),
+                if (saved.exampleTranslation.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    saved.exampleTranslation,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Colors.grey.shade600),
                   ),
                 ],
-              ),
+              ],
             ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton(
-                tooltip: 'Удалить из словаря',
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () => _removeSavedWord(saved.word),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
   }
+
+  Widget _buildCourseTab() {
+    if (_isLoadingCourse && _coursePlan == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_courseError != null && _coursePlan == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _courseError!,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _loadCoursePlan,
+                child: const Text('Повторить'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+if (_coursePlan == null) {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Сначала пройди короткий тест, чтобы определить твой уровень языка.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: () async {
+              final level = await Navigator.push<String>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PlacementTestScreen(
+                    language: widget.language,
+                  ),
+                ),
+              );
+
+              if (level != null) {
+                // после теста генерируем план по найденному уровню
+                _loadCoursePlan(overrideLevelHint: level);
+              }
+            },
+            child: const Text('Пройти тест уровня'),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () {
+              // если пользователь не хочет тест – используем тот уровень, который уже выбрал при старте
+              _loadCoursePlan();
+            },
+            child: const Text('Пропустить тест и сразу сгенерировать курс'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
+    final plan = _coursePlan!;
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: plan.levels.length,
+      itemBuilder: (context, index) {
+        final level = plan.levels[index];
+        return Card(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ExpansionTile(
+            title: Text(
+              'Level ${level.levelIndex}: ${level.title}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(level.description),
+            childrenPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: [
+              if (level.targetGrammar.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Grammar: ${level.targetGrammar.join(', ')}',
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                ),
+              if (level.targetVocab.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Vocab: ${level.targetVocab.join(', ')}',
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: level.lessons.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, i) {
+                  final lesson = level.lessons[i];
+                  return ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    tileColor: Colors.grey.shade50,
+                    title: Text(lesson.title),
+                    subtitle: Text(
+                      lesson.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    leading: Icon(
+                      Icons.menu_book_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LessonScreen(
+                            language: widget.language,
+                            level: widget.level,
+                            lesson: lesson,
+                            grammarTopics: level.targetGrammar,
+                            vocabTopics: level.targetVocab,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildInputBar() {
     return Padding(
@@ -2805,4 +3115,414 @@ class CharacterBackgroundPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CharacterBackgroundPainter oldDelegate) =>
       oldDelegate.look != look;
+}
+
+class PlacementQuestion {
+  final String question;
+  final List<String> options;
+  final int correctIndex;
+
+  PlacementQuestion({
+    required this.question,
+    required this.options,
+    required this.correctIndex,
+  });
+}
+
+class PlacementTestScreen extends StatefulWidget {
+  final String language;
+
+  const PlacementTestScreen({super.key, required this.language});
+
+  @override
+  State<PlacementTestScreen> createState() => _PlacementTestScreenState();
+}
+
+class _PlacementTestScreenState extends State<PlacementTestScreen> {
+  late final List<PlacementQuestion> _questions;
+  final Map<int, int> _answers = {}; // вопрос -> выбранный вариант
+
+  @override
+  void initState() {
+    super.initState();
+    // пока сделаем простой тест для английского; для других языков можно переиспользовать
+    _questions = [
+      PlacementQuestion(
+        question: 'Choose the correct sentence:',
+        options: [
+          'He go to school every day.',
+          'He goes to school every day.',
+          'He going to school every day.',
+        ],
+        correctIndex: 1,
+      ),
+      PlacementQuestion(
+        question: 'Translate: "Я люблю читать книги."',
+        options: [
+          'I loves read books.',
+          'I like reading books.',
+          'I am read books.',
+        ],
+        correctIndex: 1,
+      ),
+      PlacementQuestion(
+        question: 'Which word is NOT a verb?',
+        options: [
+          'run',
+          'happy',
+          'sleep',
+        ],
+        correctIndex: 1,
+      ),
+      PlacementQuestion(
+        question: 'Complete: "If I ___ time, I will call you."',
+        options: [
+          'will have',
+          'have',
+          'had',
+        ],
+        correctIndex: 1,
+      ),
+      PlacementQuestion(
+        question: 'Choose the best response: "How long have you lived here?"',
+        options: [
+          'I live here since 5 years.',
+          'I have lived here for 5 years.',
+          'I am living here 5 years.',
+        ],
+        correctIndex: 1,
+      ),
+    ];
+  }
+
+  void _finishTest() {
+    int correct = 0;
+    for (var i = 0; i < _questions.length; i++) {
+      final answer = _answers[i];
+      if (answer != null && answer == _questions[i].correctIndex) {
+        correct++;
+      }
+    }
+
+    final score = correct / _questions.length;
+
+    String level;
+    if (score < 0.3) {
+      level = 'A1';
+    } else if (score < 0.6) {
+      level = 'A2';
+    } else if (score < 0.8) {
+      level = 'B1';
+    } else {
+      level = 'B2';
+    }
+
+    // возвращаем уровень назад на экран Course
+    Navigator.pop(context, level);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Level test'),
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _questions.length + 1,
+        itemBuilder: (context, index) {
+          if (index == _questions.length) {
+            final allAnswered = _answers.length == _questions.length;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: ElevatedButton(
+                onPressed: allAnswered ? _finishTest : null,
+                child: const Text('Завершить тест'),
+              ),
+            );
+          }
+
+          final q = _questions[index];
+          final selected = _answers[index];
+
+          return Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Вопрос ${index + 1}/${_questions.length}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelMedium
+                        ?.copyWith(color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    q.question,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  for (var i = 0; i < q.options.length; i++)
+                    RadioListTile<int>(
+                      value: i,
+                      groupValue: selected,
+                      title: Text(q.options[i]),
+                      onChanged: (val) {
+                        setState(() {
+                          _answers[index] = val!;
+                        });
+                      },
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class LessonScreen extends StatefulWidget {
+  final String language;
+  final String level;
+  final LessonPlan lesson;
+  final List<String> grammarTopics;
+  final List<String> vocabTopics;
+
+  const LessonScreen({
+    super.key,
+    required this.language,
+    required this.level,
+    required this.lesson,
+    required this.grammarTopics,
+    required this.vocabTopics,
+  });
+
+  @override
+  State<LessonScreen> createState() => _LessonScreenState();
+}
+
+class _LessonScreenState extends State<LessonScreen> {
+  LessonContentModel? _content;
+  bool _isLoading = false;
+  String? _error;
+
+  /// вопрос -> выбранный вариант
+  final Map<int, int> _selectedOption = {};
+  /// вопрос -> проверен ли уже
+  final Set<int> _checked = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLesson();
+  }
+
+  Future<void> _loadLesson() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final uri =
+          Uri.parse('http://144.172.116.101:8000/generate_lesson');
+
+      final body = jsonEncode({
+        "language": widget.language,
+        "level_hint": widget.level,
+        "lesson_title": widget.lesson.title,
+        "grammar_topics": widget.grammarTopics,
+        "vocab_topics": widget.vocabTopics,
+      });
+
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        setState(() {
+          _content = LessonContentModel.fromJson(data);
+        });
+      } else {
+        setState(() {
+          _error = 'Server error: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Error: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _checkQuestion(int index) {
+    if (_content == null) return;
+    if (_selectedOption[index] == null) return;
+
+    setState(() {
+      _checked.add(index);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _content;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.lesson.title),
+      ),
+      body: _isLoading && content == null
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null && content == null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _loadLesson,
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : content == null
+                  ? const SizedBox.shrink()
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: content.exercises.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return Padding(
+                            padding:
+                                const EdgeInsets.only(bottom: 16.0),
+                            child: Text(
+                              content.description,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium,
+                            ),
+                          );
+                        }
+
+                        final exIndex = index - 1;
+                        final ex = content.exercises[exIndex];
+                        final selected = _selectedOption[exIndex];
+                        final checked = _checked.contains(exIndex);
+
+                        final isCorrect = checked &&
+                            selected != null &&
+                            selected == ex.correctIndex;
+
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          margin:
+                              const EdgeInsets.only(bottom: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Exercise ${exIndex + 1}/${content.exercises.length}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium
+                                      ?.copyWith(
+                                          color:
+                                              Colors.grey.shade600),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  ex.question,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                for (var i = 0;
+                                    i < ex.options.length;
+                                    i++)
+                                  RadioListTile<int>(
+                                    value: i,
+                                    groupValue: selected,
+                                    title: Text(ex.options[i]),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _selectedOption[exIndex] =
+                                            val!;
+                                      });
+                                    },
+                                  ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment
+                                          .spaceBetween,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          _checkQuestion(
+                                              exIndex),
+                                      child: const Text(
+                                          'Проверить'),
+                                    ),
+                                    if (checked)
+                                      Icon(
+                                        isCorrect
+                                            ? Icons.check_circle
+                                            : Icons
+                                                .cancel_outlined,
+                                        color: isCorrect
+                                            ? Colors.green
+                                            : Colors.red,
+                                      ),
+                                  ],
+                                ),
+                                if (checked) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    ex.explanation,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                            color: Colors
+                                                .grey.shade700),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+    );
+  }
 }
