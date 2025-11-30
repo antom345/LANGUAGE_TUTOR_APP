@@ -1356,6 +1356,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int _userWordCount = 0;
   int _currentLevel = 1;
   final List<int> _levelTargets = [50, 150, 300, 500, 1000];
+  final Set<String> _completedLessons = {};
 
     // план курса
   CoursePlan? _coursePlan;
@@ -2764,8 +2765,8 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 20),
+                    ),
+                    const SizedBox(height: 20),
 
         // Список уровней по «дорожке»
         for (int i = 0; i < levels.length; i++) ...[
@@ -2775,6 +2776,7 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
             index: i,
             total: levels.length,
             look: look,
+            completedLessons: _completedLessons,
           ),
           const SizedBox(height: 10),
         ],
@@ -2846,6 +2848,7 @@ Widget _buildCourseLevelNode({
   required int index,
   required int total,
   required CharacterLook look,
+  required Set<String> completedLessons,
 }) {
   // Пока все уровни считаем «открытыми»
   final Color nodeColor = look.accentColor;
@@ -2956,89 +2959,105 @@ Widget _buildCourseLevelNode({
                   for (int i = 0; i < level.lessons.length; i++)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          final lesson = level.lessons[i];
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => LessonScreen(
-                                language: widget.language,
-                                level: widget.level,
-                                lesson: lesson,
-                                grammarTopics: level.targetGrammar,
-                                vocabTopics: level.targetVocab,
+                      child: (() {
+                        final lesson = level.lessons[i];
+                        final lessonKey = '${level.title}-${lesson.title}';
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => LessonScreen(
+                                  language: widget.language,
+                                  level: widget.level,
+                                  lesson: lesson,
+                                  grammarTopics: level.targetGrammar,
+                                  vocabTopics: level.targetVocab,
+                                  onComplete: (total, done) {
+                                    setState(() {
+                                      _completedLessons.add(lessonKey);
+                                    });
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              color: completedLessons.contains(lessonKey)
+                                  ? Colors.green.withOpacity(0.12)
+                                  : Colors.grey.shade50,
+                              border: Border.all(
+                                color: completedLessons.contains(lessonKey)
+                                    ? Colors.green
+                                    : nodeColor.withOpacity(0.4),
                               ),
                             ),
-                          );
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: Colors.grey.shade50,
-                            border: Border.all(
-                              color: nodeColor.withOpacity(0.4),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 26,
-                                height: 26,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: nodeColor.withOpacity(0.12),
-                                ),
-                                child: Text(
-                                  '${i + 1}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: nodeColor,
-                                    fontSize: 13,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: nodeColor.withOpacity(0.12),
+                                  ),
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: nodeColor,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      level.lessons[i].title,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        lesson.title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      level.lessons[i].description,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Colors.grey.shade700,
-                                          ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        lesson.description,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Colors.grey.shade700,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(
-                                Icons.play_arrow_rounded,
-                                color: nodeColor,
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                Icon(
+                                  completedLessons.contains(lessonKey)
+                                      ? Icons.check_circle
+                                      : Icons.play_arrow_rounded,
+                                  color: completedLessons.contains(lessonKey)
+                                      ? Colors.green
+                                      : nodeColor,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      })(),
                     ),
                 ],
               ),
@@ -4450,6 +4469,7 @@ class LessonScreen extends StatefulWidget {
   final LessonPlan lesson;
   final List<String> grammarTopics;
   final List<String> vocabTopics;
+  final void Function(int total, int completed)? onComplete;
 
   const LessonScreen({
     super.key,
@@ -4458,6 +4478,7 @@ class LessonScreen extends StatefulWidget {
     required this.lesson,
     required this.grammarTopics,
     required this.vocabTopics,
+    this.onComplete,
   });
 
   @override
@@ -4468,6 +4489,9 @@ class _LessonScreenState extends State<LessonScreen> {
   LessonContentModel? _content;
   bool _isLoading = false;
   String? _error;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  bool _finished = false;
 
   /// вопрос -> выбранный вариант
   final Map<int, int> _selectedOption = {};
@@ -4480,6 +4504,11 @@ class _LessonScreenState extends State<LessonScreen> {
     _loadLesson();
   }
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
   Future<void> _loadLesson() async {
     setState(() {
       _isLoading = true;
@@ -4566,118 +4595,349 @@ class _LessonScreenState extends State<LessonScreen> {
                 )
               : content == null
                   ? const SizedBox.shrink()
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: content.exercises.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          return Padding(
-                            padding:
-                                const EdgeInsets.only(bottom: 16.0),
-                            child: Text(
-                              content.description,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium,
-                            ),
-                          );
-                        }
-
-                        final exIndex = index - 1;
-                        final ex = content.exercises[exIndex];
-                        final selected = _selectedOption[exIndex];
-                        final checked = _checked.contains(exIndex);
-
-                        final isCorrect = checked &&
-                            selected != null &&
-                            selected == ex.correctIndex;
-
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          margin:
-                              const EdgeInsets.only(bottom: 12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Exercise ${exIndex + 1}/${content.exercises.length}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium
-                                      ?.copyWith(
-                                          color:
-                                              Colors.grey.shade600),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  ex.question,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                for (var i = 0;
-                                    i < ex.options.length;
-                                    i++)
-                                  RadioListTile<int>(
-                                    value: i,
-                                    groupValue: selected,
-                                    title: Text(ex.options[i]),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _selectedOption[exIndex] =
-                                            val!;
-                                      });
-                                    },
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: PageView.builder(
+                            controller: _pageController,
+                            onPageChanged: (i) =>
+                                setState(() => _currentPage = i),
+                            itemCount: content.exercises.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index == 0) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: _LessonIntroCard(
+                                    title: widget.lesson.title,
+                                    description: content.description,
+                                    level: widget.level,
                                   ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment
-                                          .spaceBetween,
-                                  children: [
-                                    ElevatedButton(
-                                      onPressed: () =>
-                                          _checkQuestion(
-                                              exIndex),
-                                      child: const Text(
-                                          'Проверить'),
+                                );
+                              }
+
+                              final exIndex = index - 1;
+                              final ex = content.exercises[exIndex];
+                              final selected = _selectedOption[exIndex];
+                              final checked = _checked.contains(exIndex);
+                              final isCorrect = checked &&
+                                  selected != null &&
+                                  selected == ex.correctIndex;
+
+                              return AnimatedPadding(
+                                duration: const Duration(milliseconds: 220),
+                                padding: const EdgeInsets.all(16),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeInOut,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                            .withOpacity(0.06),
+                                        Colors.white,
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
-                                    if (checked)
-                                      Icon(
-                                        isCorrect
-                                            ? Icons.check_circle
-                                            : Icons
-                                                .cancel_outlined,
-                                        color: isCorrect
-                                            ? Colors.green
-                                            : Colors.red,
+                                    borderRadius: BorderRadius.circular(18),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.06),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 8),
                                       ),
-                                  ],
-                                ),
-                                if (checked) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    ex.explanation,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                            color: Colors
-                                                .grey.shade700),
+                                    ],
                                   ),
-                                ],
-                              ],
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Упражнение ${exIndex + 1}/${content.exercises.length}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        ex.question,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...List.generate(ex.options.length, (i) {
+                                        return RadioListTile<int>(
+                                          value: i,
+                                          groupValue: selected,
+                                          activeColor: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                          title: Text(ex.options[i]),
+                                          onChanged: (val) {
+                                            setState(() {
+                                              _selectedOption[exIndex] = val!;
+                                            });
+                                          },
+                                        );
+                                      }),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          ElevatedButton.icon(
+                                            onPressed: () =>
+                                                _checkQuestion(exIndex),
+                                            icon: const Icon(Icons.check),
+                                            label: const Text('Проверить'),
+                                          ),
+                                          if (checked)
+                                            Icon(
+                                              isCorrect
+                                                  ? Icons.check_circle
+                                                  : Icons.cancel_outlined,
+                                              color: isCorrect
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                            ),
+                                        ],
+                                      ),
+                                      if (checked) ...[
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          ex.explanation,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Colors.grey.shade700,
+                                              ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        _LessonPager(
+                          currentPage: _currentPage,
+                          totalPages: (content.exercises.length + 1),
+                          onNext: _goNextPage,
+                          onPrev: _goPrevPage,
+                        ),
+                        if (_currentPage == content.exercises.length)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                                left: 16, right: 16, bottom: 16),
+                            child: PrimaryCtaButton(
+                              label: 'Завершить урок',
+                              onTap: _finishLesson,
                             ),
                           ),
-                        );
-                      },
+                      ],
                     ),
+    );
+  }
+
+  void _goNextPage() {
+    final content = _content;
+    if (content == null) return;
+    final total = content.exercises.length + 1;
+    if (_currentPage < total - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _goPrevPage() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _finishLesson() {
+    final content = _content;
+    if (content == null) return;
+    final total = content.exercises.length;
+    final completed = _checked.length;
+    if (_finished) return;
+
+    setState(() {
+      _finished = true;
+    });
+
+    widget.onComplete?.call(total, completed);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Отлично!'),
+        content: Text('Вы завершили урок.\nВыполнено заданий: $completed из $total.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LessonIntroCard extends StatelessWidget {
+  final String title;
+  final String description;
+  final String level;
+
+  const _LessonIntroCard({
+    required this.title,
+    required this.description,
+    required this.level,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary.withOpacity(0.14),
+            Colors.white,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.flag_circle_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  Text('Уровень: $level'),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            description,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const Spacer(),
+          Row(
+            children: const [
+              Icon(Icons.swipe_left, size: 16, color: Colors.grey),
+              SizedBox(width: 6),
+              Text(
+                'Листайте, чтобы перейти к упражнениям',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LessonPager extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final VoidCallback onNext;
+  final VoidCallback onPrev;
+
+  const _LessonPager({
+    required this.currentPage,
+    required this.totalPages,
+    required this.onNext,
+    required this.onPrev,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: currentPage == 0 ? null : onPrev,
+            icon: const Icon(Icons.chevron_left),
+          ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(totalPages, (i) {
+                final active = i == currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 8,
+                  width: active ? 22 : 10,
+                  decoration: BoxDecoration(
+                    color: active
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                );
+              }),
+            ),
+          ),
+          IconButton(
+            onPressed: currentPage == totalPages - 1 ? null : onNext,
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
     );
   }
 }
