@@ -1342,12 +1342,19 @@ class _ChatScreenState extends State<ChatScreen> {
   // рекордер для голосового ввода
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
+  Timer? _recordingTimeoutTimer;
+  DateTime? _recordingStartedAt;
+  String? _currentRecordingPath;
+  static const Duration _maxRecordingDuration = Duration(seconds: 20);
+  static const Duration _minRecordingDuration = Duration(milliseconds: 700);
+  static const int _minRecordingBytes = 2000;
 
   @override
   void dispose() {
     _inputController.dispose();
     _audioPlayer.dispose();
     _audioRecorder.dispose();
+    _recordingTimeoutTimer?.cancel();
     super.dispose();
   }
 
@@ -1421,12 +1428,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final messagesPayload = initial
           ? []
-          : _messages
-                .where(
-                  (m) => !m.isCorrections,
-                ) // в историю не отправляем сообщения с ошибками
-                .map((m) => {'role': m.role, 'content': m.text})
-                .toList();
+          : (() {
+              final items = _messages
+                  .where((m) => !m.isCorrections)
+                  .map((m) => {'role': m.role, 'content': m.text})
+                  .toList();
+
+              if (items.length <= 5) return items;
+              return items.sublist(items.length - 5);
+            })();
 
       final body = jsonEncode({
         'messages': messagesPayload,
@@ -1541,6 +1551,8 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
 
 
   Future<void> _startRecording() async {
+    if (_isRecording || _isSending) return;
+
     final hasPerm = await _audioRecorder.hasPermission();
     debugPrint('STT: hasPermission = $hasPerm');
     if (!hasPerm) return;
@@ -1557,8 +1569,18 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
 
     await _audioRecorder.start(config, path: path);
 
-  // 🟣 КРИТИЧЕСКОЕ ДОПОЛНЕНИЕ ДЛЯ macOS !!!
+    // 🟣 КРИТИЧЕСКОЕ ДОПОЛНЕНИЕ ДЛЯ macOS !!!
     await Future.delayed(const Duration(milliseconds: 400));
+
+    _recordingStartedAt = DateTime.now();
+    _currentRecordingPath = path;
+    _recordingTimeoutTimer?.cancel();
+    _recordingTimeoutTimer = Timer(_maxRecordingDuration, () {
+      if (_isRecording) {
+        debugPrint('STT: auto stopping after $_maxRecordingDuration');
+        _stopRecordingAndSend(autoStop: true);
+      }
+    });
 
     setState(() {
       _isRecording = true;
@@ -1568,9 +1590,19 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
 
 
 
-  Future<void> _stopRecordingAndSend() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final path = await _audioRecorder.stop(); // вернёт путь к файлу
+  Future<void> _stopRecordingAndSend({bool autoStop = false}) async {
+    if (!_isRecording) return;
+
+    _recordingTimeoutTimer?.cancel();
+
+    await Future.delayed(const Duration(milliseconds: 200));
+    final startedAt = _recordingStartedAt;
+    final pathFromRecorder = await _audioRecorder.stop(); // вернёт путь к файлу
+    final path = pathFromRecorder ?? _currentRecordingPath;
+
+    _recordingStartedAt = null;
+    _currentRecordingPath = null;
+
     setState(() {
       _isRecording = false;
     });
@@ -1580,12 +1612,33 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       return;
     }
 
-    debugPrint('STT: recorded file = $path');
+    final file = File(path);
+    if (!await file.exists()) {
+      debugPrint('STT: recorded file does not exist');
+      return;
+    }
 
+    final bytes = await file.length();
+    final durationMs = startedAt == null
+        ? 0
+        : DateTime.now().difference(startedAt).inMilliseconds;
 
+    final tooShortByTime =
+        durationMs < _minRecordingDuration.inMilliseconds && !autoStop;
+    final tooShortBySize = bytes < _minRecordingBytes;
 
-    // После прослушивания отправляем на backend
-    await _sendAudioToBackend(File(path));
+    if (tooShortByTime || tooShortBySize) {
+      debugPrint(
+          'STT: skip sending audio (duration=${durationMs}ms, bytes=$bytes)');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Запись слишком короткая — удерживайте дольше')),
+        );
+      }
+    } else {
+      debugPrint('STT: recorded file = $path (duration=${durationMs}ms)');
+      await _sendAudioToBackend(file);
+    }
   }
 
 
@@ -1609,6 +1662,19 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
         return 'en';
     }
   }
+
+
+  Future<void> _cancelRecording() async {
+    if (!_isRecording) return;
+    _recordingTimeoutTimer?.cancel();
+    _recordingStartedAt = null;
+    _currentRecordingPath = null;
+    await _audioRecorder.stop();
+    setState(() {
+      _isRecording = false;
+    });
+  }
+
 
 
   Future<void> _sendAudioToBackend(File file) async {
@@ -1645,15 +1711,6 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       print('STT exception: $e');
     }
   }
-
-  Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      await _stopRecordingAndSend();
-    } else {
-      await _startRecording();
-    }
-  }
-
 
   void _updateProgress() {
     while (_currentLevel <= _levelTargets.length &&
@@ -1727,6 +1784,60 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
     ).showSnackBar(SnackBar(content: Text('$word удалено из словаря')));
   }
 
+  Future<String?> _saveAudioBase64(String audioBase64) async {
+    try {
+      final Uint8List audioBytes = base64Decode(audioBase64);
+      debugPrint('AUDIO BYTES LENGTH: ${audioBytes.length}');
+
+      final tempDir = await getTemporaryDirectory();
+      await Directory(tempDir.path).create(recursive: true);
+
+      final file = File(
+        '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3',
+      );
+
+      await file.writeAsBytes(audioBytes, flush: true);
+      debugPrint('AUDIO FILE PATH: ${file.path}');
+      return file.path;
+    } catch (e) {
+      debugPrint('ERROR while decoding/writing audio: $e');
+      return null;
+    }
+  }
+
+  Future<String?> _fetchWordAudio(String word) async {
+    try {
+      final uri = Uri.parse('http://144.172.116.101:8000/translate-word');
+      final body = jsonEncode({
+        'word': word,
+        'language': widget.language,
+        'with_audio': true,
+      });
+
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (resp.statusCode != 200) {
+        debugPrint('AUDIO fetch error: ${resp.statusCode} ${resp.body}');
+        return null;
+      }
+
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final audioBase64 = data['audio_base64'] as String?;
+      if (audioBase64 == null || audioBase64.isEmpty) {
+        return null;
+      }
+
+      return await _saveAudioBase64(audioBase64);
+    } catch (e) {
+      debugPrint('AUDIO FETCH EXCEPTION: $e');
+      return null;
+    }
+  }
+
   // ------ перевод слова по нажатию ------
 
   Future<void> _onWordTap(String rawWord) async {
@@ -1744,6 +1855,7 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
         'word': word,
         'language': widget.language,
         'target_language': 'Russian',
+        'with_audio': false,
       });
 
       final resp = await http.post(
@@ -1771,30 +1883,7 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       String? audioFilePath;
 
       if (audioBase64 != null && audioBase64.isNotEmpty) {
-        try {
-          // 1) декодируем base64
-          final Uint8List audioBytes = base64Decode(audioBase64);
-          debugPrint('AUDIO BYTES LENGTH: ${audioBytes.length}');
-
-          // 2) получаем и создаём (на всякий случай) временную папку
-          final tempDir = await getTemporaryDirectory();
-          await Directory(
-            tempDir.path,
-          ).create(recursive: true); // ← важная строка
-
-          // 3) создаём файл внутри этой папки
-          final file = File(
-            '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3',
-          );
-
-          // 4) пишем байты в файл
-          await file.writeAsBytes(audioBytes, flush: true);
-          audioFilePath = file.path;
-          debugPrint('AUDIO FILE PATH: $audioFilePath');
-        } catch (e) {
-          debugPrint('ERROR while decoding/writing audio: $e');
-          audioFilePath = null;
-        }
+        audioFilePath = await _saveAudioBase64(audioBase64);
       }
 
       if (!mounted) return;
@@ -1807,6 +1896,7 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       );
 
       bool isSaved = _isWordSaved(word);
+      bool isAudioLoading = false;
 
       await showDialog(
         context: context,
@@ -1817,11 +1907,24 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
                 children: [
                   Expanded(child: Text(word)),
                   // 🔊 КНОПКА ОЗВУЧКИ
-                  if (audioFilePath != null)
-                    IconButton(
-                      tooltip: 'Произнести слово',
-                      icon: const Icon(Icons.volume_up),
-                      onPressed: () async {
+                  IconButton(
+                    tooltip: audioFilePath != null
+                        ? 'Произнести слово'
+                        : 'Запросить аудио',
+                    icon: isAudioLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            audioFilePath != null
+                                ? Icons.volume_up
+                                : Icons.download,
+                          ),
+                    onPressed: () async {
+                      if (isAudioLoading) return;
+                      if (audioFilePath != null) {
                         try {
                           await _audioPlayer.stop();
                           await _audioPlayer.play(
@@ -1835,8 +1938,31 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
                             ),
                           );
                         }
-                      },
-                    ),
+                        return;
+                      }
+
+                      dialogSetState(() {
+                        isAudioLoading = true;
+                      });
+
+                      final fetchedPath = await _fetchWordAudio(word);
+
+                      if (!context.mounted) return;
+
+                      dialogSetState(() {
+                        isAudioLoading = false;
+                        audioFilePath = fetchedPath;
+                      });
+
+                      if (fetchedPath == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Аудио недоступно, попробуйте позже'),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                   IconButton(
                     tooltip: isSaved
                         ? 'Удалить из словаря'
@@ -2816,13 +2942,36 @@ Widget _buildInputBar() {
             ),
           ),
           const SizedBox(width: 8),
-          // Кнопка микрофона
-          IconButton(
-            icon: Icon(_isRecording ? Icons.mic : Icons.mic_none),
-            color: _isRecording
-                ? Colors.red
-                : Theme.of(context).colorScheme.primary,
-            onPressed: _isSending ? null : _toggleRecording,
+          // Кнопка микрофона: запись только пока удерживается
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: _isSending ? null : (_) => _startRecording(),
+            onTapUp: _isSending ? null : (_) => _stopRecordingAndSend(),
+            onTapCancel: _isSending ? null : _cancelRecording,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _isRecording
+                    ? Colors.red.withOpacity(0.12)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: _isRecording
+                      ? Colors.redAccent
+                      : Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.4),
+                ),
+              ),
+              child: Icon(
+                _isRecording ? Icons.mic : Icons.mic_none,
+                color: _isRecording
+                    ? Colors.red
+                    : Theme.of(context).colorScheme.primary,
+              ),
+            ),
           ),
           const SizedBox(width: 4),
           // Кнопка отправки текста
