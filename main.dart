@@ -729,43 +729,44 @@ class ChatListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chats = [
-      {
-        'name': 'Emily',
-        'language': 'English',
-        'partnerGender': 'female',
-        'color': const Color(0xFF6C63FF),
-      },
-      {
-        'name': 'Hans',
-        'language': 'German',
-        'partnerGender': 'male',
-        'color': const Color(0xFF00BFA6),
-      },
-      {
-        'name': 'Marie',
-        'language': 'French',
-        'partnerGender': 'female',
-        'color': const Color(0xFFFF6584),
-      },
-      {
-        'name': 'Sofia',
-        'language': 'Spanish',
-        'partnerGender': 'female',
-        'color': const Color(0xFFFFB300),
-      },
-      {
-        'name': 'Luca',
-        'language': 'Italian',
-        'partnerGender': 'male',
-        'color': const Color(0xFF29B6F6),
-      },
-      {
-        'name': 'Kim',
-        'language': 'Korean',
-        'partnerGender': 'female',
-        'color': const Color(0xFF8E24AA),
-      },
-    ];
+  {
+    'name': 'Michael',
+    'language': 'English',
+    'partnerGender': 'male',
+    'color': const Color(0xFF6C63FF),
+  },
+  {
+    'name': 'Hans',
+    'language': 'German',
+    'partnerGender': 'male',
+    'color': const Color(0xFF00BFA6),
+  },
+  {
+    'name': 'Jack',
+    'language': 'French',
+    'partnerGender': 'male',
+    'color': const Color(0xFFFF6584),
+  },
+  {
+    'name': 'Pablo',
+    'language': 'Spanish',
+    'partnerGender': 'male',
+    'color': const Color(0xFFFFB300),
+  },
+  {
+    'name': 'Marco',
+    'language': 'Italian',
+    'partnerGender': 'male',
+    'color': const Color(0xFF29B6F6),
+  },
+  {
+    'name': 'Kim',
+    'language': 'Korean',
+    'partnerGender': 'male',
+    'color': const Color(0xFF8E24AA),
+  },
+];
+
 
     return Scaffold(
       appBar: AppBar(title: const Text('Диалоги'), centerTitle: true),
@@ -1952,23 +1953,28 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
 
 
   String _detectPartnerNameFromMessages() {
-    if (widget.language == 'German') {
-      return widget.partnerGender == 'male' ? 'Lukas' : 'Anna';
-    }
-    if (widget.language == 'French') {
-      return widget.partnerGender == 'male' ? 'Pierre' : 'Marie';
-    }
-    if (widget.language == 'Spanish') {
-      return widget.partnerGender == 'male' ? 'Carlos' : 'Sofia';
-    }
-    if (widget.language == 'Italian') {
-      return widget.partnerGender == 'male' ? 'Marco' : 'Giulia';
-    }
-    if (widget.language == 'Korean') {
-      return widget.partnerGender == 'male' ? 'Minjun' : 'Jisoo';
-    }
-    return widget.partnerGender == 'male' ? 'James' : 'Emily';
+  if (widget.language == 'English') {
+    return 'Michael';
   }
+  if (widget.language == 'German') {
+    return 'Hans';
+  }
+  if (widget.language == 'French') {
+    return 'Jack';
+  }
+  if (widget.language == 'Spanish') {
+    return 'Pablo';
+  }
+  if (widget.language == 'Italian') {
+    return 'Marco';
+  }
+  if (widget.language == 'Korean') {
+    return 'Kim';
+  }
+  // запасной вариант по умолчанию
+  return 'Michael';
+}
+
 
   Widget _buildMessageBubble(ChatMessage msg, bool isUser) {
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
@@ -1993,7 +1999,6 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       textColor = const Color(0xFF1C1C1C);
       name = _detectPartnerNameFromMessages();
     }
-
     // содержимое: для пользователя и блока ошибок — обычный Text,
     // для обычных ответов бота — кликабельные слова
     Widget content;
@@ -2093,6 +2098,7 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       ),
     );
   }
+
 
   Widget _buildTypingIndicator() {
     final accent = _characterLook.accentColor;
@@ -2261,23 +2267,23 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
                   ),
                 ),
                 Container(
-                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: _buildInputBar(),
+               margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+  padding: const EdgeInsets.symmetric(
+    horizontal: 8,
+    vertical: 6,
+  ),
+  decoration: BoxDecoration(
+    color: Colors.white.withOpacity(0.9),
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+  child: _buildInputBar(),
                 ),
               ],
             ),
@@ -2292,6 +2298,7 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       ),
     );
   }
+
 
   Widget _buildCharacterStage(CharacterLook look) {
     return LayoutBuilder(
@@ -2438,321 +2445,345 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
 
 
   Widget _buildDictionaryTab() {
-    if (_savedWords.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'Вы ещё не добавили слова. Нажмите на слово в чате и выделите его звездой, чтобы сохранить.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Colors.grey.shade600),
-          ),
+  if (_savedWords.isEmpty) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'Вы ещё не добавили слова. Нажмите на слово в чате и выделите его звездой, чтобы сохранить.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: Colors.grey.shade600),
         ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _savedWords.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final saved = _savedWords[index];
-
-        return Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  saved.word,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  saved.translation,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                ),
-                if (saved.example.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    saved.example,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-                if (saved.exampleTranslation.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    saved.exampleTranslation,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: Colors.grey.shade600),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
+      ),
     );
   }
 
-  Widget _buildCourseTab() {
-    final look = _characterLook;
+  return ListView.separated(
+    padding: const EdgeInsets.all(16),
+    itemCount: _savedWords.length,
+    separatorBuilder: (_, __) => const SizedBox(height: 12),
+    itemBuilder: (context, index) {
+      final saved = _savedWords[index];
 
-    if (_isLoadingCourse && _coursePlan == null) {
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                lighten(look.primaryColor, 0.25),
-                Colors.white,
+      return Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      saved.word,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Удалить из словаря',
+                    onPressed: () => _removeSavedWord(saved.word),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                saved.translation,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+              if (saved.example.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  saved.example,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              if (saved.exampleTranslation.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  saved.exampleTranslation,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: Colors.grey.shade700),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+  Widget _buildCourseTab() {
+  final look = _characterLook;
+
+  // 1) Загрузка курса – показываем красивый лоадер
+  if (_isLoadingCourse && _coursePlan == null) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              lighten(look.primaryColor, 0.25),
+              Colors.white,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-            borderRadius: BorderRadius.circular(24),
+          ],
+        ),
+        child: const CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  // 2) Курс ещё не сгенерирован – красивая карточка-приглашение
+  if (_coursePlan == null) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  lighten(look.primaryColor, 0.3),
+                  lighten(look.accentColor, 0.2),
+                  Colors.white,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.auto_graph_rounded,
+                        color: look.accentColor,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Личный курс по ${widget.language}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Текущий уровень: ${widget.level}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.grey.shade700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _CoursePill(
+                      icon: Icons.psychology_alt_outlined,
+                      label: 'Учитываем вводный тест',
+                      color: look.accentColor,
+                    ),
+                    const SizedBox(width: 8),
+                    _CoursePill(
+                      icon: Icons.menu_book_outlined,
+                      label: 'Грамматика + словарь',
+                      color: look.primaryColor,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Сгенерируйте курс из нескольких уровней, адаптированный под ваш возраст, цели и результат теста. '
+                  'Каждый уровень содержит уроки с упражнениями как в тренажёре.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: Colors.grey.shade800),
+                ),
+                if (_courseError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _courseError!,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 200,
+                    child: PrimaryCtaButton(
+                      label: 'Сгенерировать курс',
+                      onTap: _loadCoursePlan,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3) Курс уже есть – показываем «дорожку уровней» как в Duolingo
+  final plan = _coursePlan!;
+  final levels = plan.levels;
+
+  return Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.white,
+          lighten(look.primaryColor, 0.10),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+    ),
+    child: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Шапка курса
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.08),
-                blurRadius: 20,
+                blurRadius: 18,
                 offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: const CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    if (_coursePlan == null) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    lighten(look.primaryColor, 0.3),
-                    lighten(look.accentColor, 0.2),
-                    Colors.white,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(26),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.85),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.auto_graph_rounded,
-                          color: look.accentColor,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Личный курс ${widget.language}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'Уровень: ${widget.level}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      _CoursePill(
-                        icon: Icons.flash_on,
-                        label: 'Быстрый план из 5 уровней',
-                        color: look.accentColor,
-                      ),
-                      const SizedBox(width: 8),
-                      _CoursePill(
-                        icon: Icons.menu_book_outlined,
-                        label: 'Словарь и грамматика',
-                        color: look.primaryColor,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Получите программу, адаптированную под ваш уровень, возраст и цели, и проходите уроки в удобном темпе.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(color: Colors.grey.shade800),
-                  ),
-                  if (_courseError != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _courseError!,
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  PrimaryCtaButton(
-                    label: 'Сгенерировать курс',
-                    onTap: _loadCoursePlan,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final plan = _coursePlan!;
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: plan.levels.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final level = plan.levels[index];
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                lighten(look.primaryColor, 0.28),
-                Colors.white,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ExpansionTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Text(
-              'Уровень ${level.levelIndex}: ${level.title}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            subtitle: Text(level.description),
-            childrenPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
             children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  if (level.targetGrammar.isNotEmpty)
-                    _CoursePill(
-                      icon: Icons.rule_folder_outlined,
-                      label: 'Grammar: ${level.targetGrammar.join(', ')}',
-                      color: look.accentColor,
+              CharacterAvatar(look: look, size: 52),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Курс ${plan.language}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                  if (level.targetVocab.isNotEmpty)
-                    _CoursePill(
-                      icon: Icons.auto_stories_outlined,
-                      label: 'Vocab: ${level.targetVocab.join(', ')}',
-                      color: look.primaryColor,
+                    const SizedBox(height: 4),
+                    Text(
+                      'Общий уровень: ${plan.overallLevel}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.grey.shade700),
                     ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: level.lessons.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, i) {
-                  final lesson = level.lessons[i];
-                  return ListTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    tileColor: Colors.white.withOpacity(0.85),
-                    title: Text(lesson.title),
-                    subtitle: Text(
-                      lesson.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    leading: Icon(
-                      Icons.menu_book_outlined,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => LessonScreen(
-                            language: widget.language,
-                            level: widget.level,
-                            lesson: lesson,
-                            grammarTopics: level.targetGrammar,
-                            vocabTopics: level.targetVocab,
-                          ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.star, size: 16, color: look.accentColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${levels.length} уровней • ${levels.fold<int>(0, (sum, l) => sum + l.lessons.length)} уроков',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Colors.grey.shade700),
                         ),
-                      );
-                    },
-                  );
-                },
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+        const SizedBox(height: 20),
 
+        // Список уровней по «дорожке»
+        for (int i = 0; i < levels.length; i++) ...[
+          _buildCourseLevelNode(
+            context: context,
+            level: levels[i],
+            index: i,
+            total: levels.length,
+            look: look,
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    ),
+  );
+}
 
-  Widget _buildInputBar() {
+Widget _buildInputBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
       child: Row(
@@ -2808,6 +2839,218 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       ),
     );
   }
+
+Widget _buildCourseLevelNode({
+  required BuildContext context,
+  required CourseLevelPlan level,
+  required int index,
+  required int total,
+  required CharacterLook look,
+}) {
+  // Пока все уровни считаем «открытыми»
+  final Color nodeColor = look.accentColor;
+
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Левая часть – «столбик прогресса»
+      Column(
+        children: [
+          if (index != 0)
+            Container(
+              width: 3,
+              height: 22,
+              color: Colors.grey.shade300,
+            ),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: nodeColor.withOpacity(0.12),
+              border: Border.all(color: nodeColor, width: 2),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${index + 1}',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: nodeColor,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          if (index != total - 1)
+            Container(
+              width: 3,
+              height: 40,
+              color: Colors.grey.shade300,
+            ),
+        ],
+      ),
+      const SizedBox(width: 12),
+
+      // Правая часть – карточка уровня с уроками
+      Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.flag_rounded, size: 18, color: nodeColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Уровень ${level.levelIndex}: ${level.title}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                level.description,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+
+              // Плашки с грамматикой/лексикой
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (level.targetGrammar.isNotEmpty)
+                    _CoursePill(
+                      icon: Icons.rule_folder_outlined,
+                      label: 'Grammar: ${level.targetGrammar.join(', ')}',
+                      color: look.accentColor,
+                    ),
+                  if (level.targetVocab.isNotEmpty)
+                    _CoursePill(
+                      icon: Icons.auto_stories_outlined,
+                      label: 'Vocab: ${level.targetVocab.join(', ')}',
+                      color: look.primaryColor,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Список уроков
+              Column(
+                children: [
+                  for (int i = 0; i < level.lessons.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          final lesson = level.lessons[i];
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => LessonScreen(
+                                language: widget.language,
+                                level: widget.level,
+                                lesson: lesson,
+                                grammarTopics: level.targetGrammar,
+                                vocabTopics: level.targetVocab,
+                              ),
+                            ),
+                          );
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: Colors.grey.shade50,
+                            border: Border.all(
+                              color: nodeColor.withOpacity(0.4),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 26,
+                                height: 26,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: nodeColor.withOpacity(0.12),
+                                ),
+                                child: Text(
+                                  '${i + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: nodeColor,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      level.lessons[i].title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      level.lessons[i].description,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Colors.grey.shade700,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.play_arrow_rounded,
+                                color: nodeColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+
 
 
   Widget _buildCharacterAvatar() {
@@ -3291,6 +3534,569 @@ class PlacementQuestion {
   });
 }
 
+// Единый набор тестов по языкам
+final Map<String, List<PlacementQuestion>> kPlacementTests = {
+  'English': [
+    PlacementQuestion(
+      question: 'Choose the correct sentence (Present Simple):',
+      options: [
+        'He go to school every day.',
+        'He goes to school every day.',
+        'He going to school every day.',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Translate: "Я люблю читать книги."',
+      options: [
+        'I love to reading books.',
+        'I like reading books.',
+        'I am loving read books.',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Gap-fill: "Yesterday I ___ to the cinema."',
+      options: [
+        'go',
+        'went',
+        'gone',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Which word is NOT a verb?',
+      options: [
+        'run',
+        'happy',
+        'sleep',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Choose the correct preposition: "I am interested ___ music."',
+      options: [
+        'in',
+        'on',
+        'about',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Choose the closest in meaning to "rapid":',
+      options: [
+        'slow',
+        'fast',
+        'boring',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Similar sounding: "I left my book over ___."',
+      options: [
+        'their',
+        'there',
+        "they\'re",
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Phrasal verb: "to look up" in a dictionary means…',
+      options: [
+        'to admire someone',
+        'to search for information',
+        'to visit someone',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Choose the correct phrasal verb: "He finally ___ smoking last year."',
+      options: [
+        'gave up',
+        'gave in',
+        'gave out',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Conditional: "If I ___ time, I will call you."',
+      options: [
+        'will have',
+        'have',
+        'had',
+      ],
+      correctIndex: 1,
+    ),
+  ],
+
+  'German': [
+    PlacementQuestion(
+      question: 'Wähle den richtigen Satz (Präsens):',
+      options: [
+        'Er gehen jeden Tag zur Schule.',
+        'Er geht jeden Tag zur Schule.',
+        'Er geht jeden Tag zu Schule.',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Lücke ausfüllen: "Gestern ___ ich ins Kino."',
+      options: [
+        'gehe',
+        'ging',
+        'gegangen',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Welcher Artikel passt? "___ Tisch ist neu."',
+      options: [
+        'Der',
+        'Die',
+        'Das',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Welche Form ist richtig? "Ich ___ nach Hause gegangen."',
+      options: [
+        'bin',
+        'habe',
+        'werde',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Wähle das Wort, das NICHT zum Verb "sprechen" passt:',
+      options: [
+        'mit Freunden',
+        'laut',
+        'leise',
+        'schnell',
+      ],
+      correctIndex: 3,
+    ),
+    PlacementQuestion(
+      question: 'Präposition: "Ich warte ___ den Bus."',
+      options: [
+        'auf',
+        'für',
+        'an',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Ähnliche Bedeutung: Welches Wort ist am nächsten zu "traurig"?',
+      options: [
+        'glücklich',
+        'froh',
+        'unglücklich',
+      ],
+      correctIndex: 2,
+    ),
+    PlacementQuestion(
+      question: 'Trennbares Verb: "Ich ___ morgen früh ___." (aufstehen)',
+      options: [
+        'aufstehe auf',
+        'stehe morgen auf',
+        'stehe auf morgen',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Lücke: "Kannst du mir bitte ___?"',
+      options: [
+        'hilfen',
+        'helfen',
+        'geholfen',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Welche Form ist korrekt? "Wir ___ gestern Fußball."',
+      options: [
+        'spielen',
+        'spielten',
+        'gespielt',
+      ],
+      correctIndex: 1,
+    ),
+  ],
+
+  'French': [
+    PlacementQuestion(
+      question: 'Choisis la phrase correcte (présent):',
+      options: [
+        'Il va à l\'école tous les jours.',
+        'Il allez à l\'école tous les jours.',
+        'Il aller à l\'école tous les jours.',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Complète: "Hier, je ___ au cinéma."',
+      options: [
+        'vais',
+        'suis allé',
+        'allé',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Quel mot est un adjectif ?',
+      options: [
+        'manger',
+        'heureux',
+        'vite',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Préposition: "Je pense ___ toi."',
+      options: [
+        'à',
+        'de',
+        'sur',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Choisis le mot le plus proche de "rapide":',
+      options: [
+        'lent',
+        'vite',
+        'triste',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Complète: "Si j\'ai le temps, je ___."',
+      options: [
+        'viens',
+        'viendrai',
+        'viendrais',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Quel mot n\'a PAS le même son initial que les autres ?',
+      options: [
+        'gare',
+        'gros',
+        'chat',
+      ],
+      correctIndex: 2,
+    ),
+    PlacementQuestion(
+      question: 'Choisis la bonne forme de "être": "Nous ___ contents."',
+      options: [
+        'sommes',
+        'êtes',
+        'sont',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Complète: "Je ___ français depuis trois ans."',
+      options: [
+        'apprends',
+        'appris',
+        'apprendre',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Quel est le contraire de "grand" ?',
+      options: [
+        'petit',
+        'fort',
+        'joli',
+      ],
+      correctIndex: 0,
+    ),
+  ],
+
+  'Spanish': [
+    PlacementQuestion(
+      question: 'Elige la frase correcta:',
+      options: [
+        'Yo va a la escuela.',
+        'Yo voy a la escuela.',
+        'Yo voy a escuela.',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Completa: "Ayer ___ al cine."',
+      options: [
+        'voy',
+        'fui',
+        'iba',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: '¿Cuál palabra NO es un verbo?',
+      options: [
+        'correr',
+        'feliz',
+        'leer',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Preposición: "Pienso ___ ti."',
+      options: [
+        'en',
+        'a',
+        'de',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Palabra parecida: ¿Qué palabra suena diferente?',
+      options: [
+        'casa',
+        'caza',
+        'cosa',
+      ],
+      correctIndex: 2,
+    ),
+    PlacementQuestion(
+      question: 'Completa: "Si tengo tiempo, te ___."',
+      options: [
+        'llamé',
+        'llamaré',
+        'llamo',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Escoge el sinónimo de "rápido":',
+      options: [
+        'lento',
+        ' veloz',
+        'triste',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Completa: "He ___ español durante dos años."',
+      options: [
+        'estudiado',
+        'estudiar',
+        'estudio',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: '¿Cuál forma es correcta? "Nosotros ___ fútbol ayer."',
+      options: [
+        'jugamos',
+        'jugaron',
+        'jugué',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: '¿Cuál es el contrario de "grande"?',
+      options: [
+        'pequeño',
+        'rápido',
+        'alto',
+      ],
+      correctIndex: 0,
+    ),
+  ],
+
+  'Italian': [
+    PlacementQuestion(
+      question: 'Scegli la frase corretta:',
+      options: [
+        'Io vado a scuola ogni giorno.',
+        'Io va a scuola ogni giorno.',
+        'Io andare a scuola ogni giorno.',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Completa: "Ieri ___ al cinema."',
+      options: [
+        'vado',
+        'sono andato',
+        'andato',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Quale parola NON è un verbo?',
+      options: [
+        'correre',
+        'felice',
+        'leggere',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Preposizione: "Penso ___ te."',
+      options: [
+        'a',
+        'di',
+        'su',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Scegli il sinonimo di "veloce":',
+      options: [
+        'lento',
+        'rapido',
+        'triste',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Completa: "Se ho tempo, ti ___."',
+      options: [
+        'chiamo',
+        'chiamerò',
+        'chiamato',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Quale parola suona diversa?',
+      options: [
+        'cane',
+        'casa',
+        'cava',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Completa: "Studio italiano ___ tre anni."',
+      options: [
+        'da',
+        'per',
+        'in',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: 'Qual è la forma corretta? "Noi ___ calcio ieri."',
+      options: [
+        'giochiamo',
+        'abbiamo giocato',
+        'giocato',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: 'Contrario di "grande":',
+      options: [
+        'piccolo',
+        'alto',
+        'forte',
+      ],
+      correctIndex: 0,
+    ),
+  ],
+
+  'Korean': [
+    PlacementQuestion(
+      question: '어느 문장이 맞습니까?',
+      options: [
+        '저는 학교를 가요.',
+        '저는 학교에 가요.',
+        '저는 학교 가요에.',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: '빈칸 채우기: "어제 영화를 ___."',
+      options: [
+        '가요',
+        '봤어요',
+        '봤다',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: '어느 단어가 형용사입니까?',
+      options: [
+        '먹다',
+        '예쁘다',
+        '읽다',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: '비슷한 발음: 다른 단어는?',
+      options: [
+        '눈 (eye)',
+        '눈 (snow)',
+        '문 (door)',
+      ],
+      correctIndex: 2,
+    ),
+    PlacementQuestion(
+      question: '조사: "학교___ 가요."',
+      options: [
+        '가',
+        '에',
+        '을',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: '빈칸 채우기: "시간이 ___ 도와줄게."',
+      options: [
+        '있으면',
+        '있어서',
+        '있다',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: '어느 단어가 동사가 아닙니까?',
+      options: [
+        '가다',
+        '작다',
+        '오다',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: '알맞은 표현: "만나서 ___."',
+      options: [
+        '고마워요',
+        '반가워요',
+        '주세요',
+      ],
+      correctIndex: 1,
+    ),
+    PlacementQuestion(
+      question: '문장을 완성하세요: "한국어를 ___ 있어요."',
+      options: [
+        '공부해',
+        '공부하고',
+        '공부할',
+      ],
+      correctIndex: 0,
+    ),
+    PlacementQuestion(
+      question: '반대말: "크다"의 반대는?',
+      options: [
+        '작다',
+        '많다',
+        '빠르다',
+      ],
+      correctIndex: 0,
+    ),
+  ],
+};
+
+
 class PlacementTestScreen extends StatefulWidget {
   final String language;
 
@@ -3307,57 +4113,12 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
   @override
   void initState() {
     super.initState();
-    // пока сделаем простой тест для английского; для других языков можно переиспользовать
-    _questions = [
-      PlacementQuestion(
-        question: 'Choose the correct sentence:',
-        options: [
-          'He go to school every day.',
-          'He goes to school every day.',
-          'He going to school every day.',
-        ],
-        correctIndex: 1,
-      ),
-      PlacementQuestion(
-        question: 'Translate: "Я люблю читать книги."',
-        options: [
-          'I loves read books.',
-          'I like reading books.',
-          'I am read books.',
-        ],
-        correctIndex: 1,
-      ),
-      PlacementQuestion(
-        question: 'Which word is NOT a verb?',
-        options: [
-          'run',
-          'happy',
-          'sleep',
-        ],
-        correctIndex: 1,
-      ),
-      PlacementQuestion(
-        question: 'Complete: "If I ___ time, I will call you."',
-        options: [
-          'will have',
-          'have',
-          'had',
-        ],
-        correctIndex: 1,
-      ),
-      PlacementQuestion(
-        question: 'Choose the best response: "How long have you lived here?"',
-        options: [
-          'I live here since 5 years.',
-          'I have lived here for 5 years.',
-          'I am living here 5 years.',
-        ],
-        correctIndex: 1,
-      ),
-    ];
+    // Берём тест по языку, если для этого языка нет —
+    // используем английский как запасной
+    _questions = kPlacementTests[widget.language] ?? kPlacementTests['English']!;
   }
 
-  void _finishTest() {
+  Future<void> _finishTest() async {
     int correct = 0;
     for (var i = 0; i < _questions.length; i++) {
       final answer = _answers[i];
@@ -3367,7 +4128,6 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
     }
 
     final score = correct / _questions.length;
-
     String level;
     if (score < 0.3) {
       level = 'A1';
@@ -3379,77 +4139,310 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
       level = 'B2';
     }
 
-    // возвращаем уровень назад на экран Course
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Результаты теста'),
+        content: Text(
+          'Вы ответили правильно на $correct из ${_questions.length} вопросов.\n'
+          'Рекомендованный уровень: $level.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Продолжить'),
+          ),
+        ],
+      ),
+    );
+
     Navigator.pop(context, level);
+  }
+
+  Widget _buildHeaderProgress(BuildContext context) {
+    final total = _questions.length;
+    final answered = _answers.length;
+    final progress = total == 0 ? 0.0 : answered / total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Прогресс теста',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 10,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 0; i < total; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Icon(
+                  i < answered ? Icons.star : Icons.star_border,
+                  size: 18,
+                  color: i < answered
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey.shade400,
+                ),
+              ),
+            const Spacer(),
+            Text(
+              '$answered / $total отвечено',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuestionCard({
+    required BuildContext context,
+    required int index,
+    required PlacementQuestion question,
+    required int? selectedIndex,
+  }) {
+    final questionNumber = index + 1;
+    final total = _questions.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Вопрос $questionNumber из $total',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    selectedIndex == null
+                        ? Icons.help_outline
+                        : Icons.check_circle_outline,
+                    size: 20,
+                    color: selectedIndex == null
+                        ? Colors.grey.shade400
+                        : Theme.of(context).colorScheme.secondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                question.question,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              Column(
+                children: List.generate(question.options.length, (optionIndex) {
+                  final optionText = question.options[optionIndex];
+                  final isSelected = selectedIndex == optionIndex;
+                  final letter =
+                      String.fromCharCode(65 + optionIndex); // 'A', 'B', 'C'...
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        setState(() {
+                          _answers[index] = optionIndex;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: isSelected
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.12)
+                              : Colors.grey.shade100,
+                          border: Border.all(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey.shade300,
+                            width: isSelected ? 1.6 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.white,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                      : Colors.grey.shade400,
+                                ),
+                              ),
+                              child: Text(
+                                letter,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.grey.shade800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                optionText,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final allAnswered = _answers.length == _questions.length;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Level test'),
+        title: const Text('Вводный тест'),
+        centerTitle: true,
+        elevation: 0,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _questions.length + 1,
-        itemBuilder: (context, index) {
-          if (index == _questions.length) {
-            final allAnswered = _answers.length == _questions.length;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: ElevatedButton(
-                onPressed: allAnswered ? _finishTest : null,
-                child: const Text('Завершить тест'),
-              ),
-            );
-          }
-
-          final q = _questions[index];
-          final selected = _answers[index];
-
-          return Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Вопрос ${index + 1}/${_questions.length}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelMedium
-                        ?.copyWith(color: Colors.grey.shade600),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).colorScheme.primary.withOpacity(0.08),
+              Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildHeaderProgress(context),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _questions.length,
+                    itemBuilder: (context, index) {
+                      final question = _questions[index];
+                      final selectedIndex = _answers[index];
+                      return _buildQuestionCard(
+                        context: context,
+                        index: index,
+                        question: question,
+                        selectedIndex: selectedIndex,
+                      );
+                    },
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    q.question,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  for (var i = 0; i < q.options.length; i++)
-                    RadioListTile<int>(
-                      value: i,
-                      groupValue: selected,
-                      title: Text(q.options[i]),
-                      onChanged: (val) {
-                        setState(() {
-                          _answers[index] = val!;
-                        });
-                      },
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: allAnswered ? _finishTest : null,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: Text(
+                      allAnswered
+                          ? 'Закончить тест и посмотреть результат'
+                          : 'Ответьте на все вопросы',
                     ),
-                ],
-              ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 }
+
 
 class LessonScreen extends StatefulWidget {
   final String language;
