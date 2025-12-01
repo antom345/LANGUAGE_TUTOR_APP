@@ -87,19 +87,39 @@ class LessonPlan {
 
 class LessonExercise {
   final String id;
-  final String type; // пока всегда "multiple_choice"
+
+  /// multiple_choice / translate_sentence / fill_in_blank / reorder_words
+  final String type;
+
+  /// Общий текст вопроса / задания
   final String question;
-  final List<String> options;
-  final int correctIndex;
+
+  /// Объяснение после проверки
   final String explanation;
+
+  /// Только для multiple_choice
+  final List<String>? options;
+  final int? correctIndex;
+
+  /// Для translate_sentence и fill_in_blank
+  final String? correctAnswer;
+  final String? sentenceWithGap;
+
+  /// Для reorder_words
+  final List<String>? reorderWords;
+  final List<String>? reorderCorrect;
 
   LessonExercise({
     required this.id,
     required this.type,
     required this.question,
-    required this.options,
-    required this.correctIndex,
     required this.explanation,
+    this.options,
+    this.correctIndex,
+    this.correctAnswer,
+    this.sentenceWithGap,
+    this.reorderWords,
+    this.reorderCorrect,
   });
 
   factory LessonExercise.fromJson(Map<String, dynamic> json) {
@@ -107,12 +127,18 @@ class LessonExercise {
       id: json['id'] as String,
       type: json['type'] as String,
       question: json['question'] as String,
-      options: (json['options'] as List).cast<String>(),
-      correctIndex: json['correct_index'] as int,
       explanation: json['explanation'] as String,
+      options: (json['options'] as List?)?.cast<String>(),
+      correctIndex: json['correct_index'] as int?,
+      correctAnswer: json['correct_answer'] as String?,
+      sentenceWithGap: json['sentence_with_gap'] as String?,
+      reorderWords: (json['reorder_words'] as List?)?.cast<String>(),
+      reorderCorrect: (json['reorder_correct'] as List?)?.cast<String>(),
     );
   }
 }
+
+
 
 class LessonContentModel {
   final String lessonId;
@@ -1388,7 +1414,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return List.generate(frameCount, (i) {
       final n = i + 1;
       final name = n.toString().padLeft(4, '0');
-      return 'assets/anim/$folder/$name.png';
+      return 'assets/anim/$folder/$name.webp';
     });
   }
   @override
@@ -4642,10 +4668,26 @@ class _LessonScreenState extends State<LessonScreen> {
   int _currentPage = 0;
   bool _finished = false;
 
-  /// вопрос -> выбранный вариант
+  /// Для multiple_choice: индекс выбранного варианта
   final Map<int, int> _selectedOption = {};
-  /// вопрос -> проверен ли уже
+
+  /// Для текстовых заданий (translate_sentence, fill_in_blank)
+  final Map<int, String> _textAnswers = {};
+
+  /// Для reorder_words: порядок, который выбрал пользователь
+  final Map<int, List<String>> _reorderSelected = {};
+
+  /// Какие вопросы уже проверены
   final Set<int> _checked = {};
+
+  bool _listsEqual(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
 
   @override
   void initState() {
@@ -4704,13 +4746,31 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   void _checkQuestion(int index) {
-    if (_content == null) return;
-    if (_selectedOption[index] == null) return;
+  if (_content == null) return;
+  final ex = _content!.exercises[index];
 
-    setState(() {
-      _checked.add(index);
-    });
+  switch (ex.type) {
+    case 'multiple_choice':
+      if (_selectedOption[index] == null) return;
+      break;
+    case 'translate_sentence':
+    case 'fill_in_blank':
+      final ans = (_textAnswers[index] ?? '').trim();
+      if (ans.isEmpty) return;
+      break;
+    case 'reorder_words':
+      final order = _reorderSelected[index] ?? const <String>[];
+      if (order.isEmpty) return;
+      break;
+    default:
+      return;
   }
+
+  setState(() {
+    _checked.add(index);
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -4824,21 +4884,22 @@ class _LessonScreenState extends State<LessonScreen> {
                                             ),
                                       ),
                                       const SizedBox(height: 12),
-                                      ...List.generate(ex.options.length, (i) {
-                                        return RadioListTile<int>(
-                                          value: i,
-                                          groupValue: selected,
-                                          activeColor: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                          title: Text(ex.options[i]),
-                                          onChanged: (val) {
-                                            setState(() {
-                                              _selectedOption[exIndex] = val!;
-                                            });
-                                          },
-                                        );
-                                      }),
+                                      if (ex.type == 'multiple_choice' && ex.options != null) ...[
+  ...List.generate(ex.options!.length, (i) {
+    return RadioListTile<int>(
+      value: i,
+      groupValue: selected,
+      activeColor: Theme.of(context).colorScheme.primary,
+      title: Text(ex.options![i]),
+      onChanged: (val) {
+        setState(() {
+          _selectedOption[exIndex] = val!;
+        });
+      },
+    );
+  }),
+],
+
                                       const SizedBox(height: 12),
                                       Row(
                                         mainAxisAlignment:
