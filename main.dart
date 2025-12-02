@@ -92,6 +92,7 @@ class LessonExercise {
   final String type;
 
   /// Общий текст вопроса / задания
+  final String? instruction;
   final String question;
 
   /// Объяснение после проверки
@@ -114,6 +115,7 @@ class LessonExercise {
     required this.type,
     required this.question,
     required this.explanation,
+    this.instruction,
     this.options,
     this.correctIndex,
     this.correctAnswer,
@@ -128,6 +130,7 @@ class LessonExercise {
       type: json['type'] as String,
       question: json['question'] as String,
       explanation: json['explanation'] as String,
+      instruction: json['instruction'] as String?,
       options: (json['options'] as List?)?.cast<String>(),
       correctIndex: json['correct_index'] as int?,
       correctAnswer: json['correct_answer'] as String?,
@@ -1390,6 +1393,20 @@ class _ChatScreenState extends State<ChatScreen> {
   int _currentLevel = 1;
   final List<int> _levelTargets = [50, 150, 300, 500, 1000];
   final Set<String> _completedLessons = {};
+  final List<String> _userInterests = [];
+  bool _interestsAsked = false;
+  static const List<String> _interestOptions = [
+    'Путешествия',
+    'Работа / Карьера',
+    'Учёба',
+    'Фильмы и сериалы',
+    'Музыка',
+    'Спорт',
+    'Технологии и IT',
+    'Еда и кулинария',
+    'Отношения и общение',
+    'Игры',
+  ];
 
     // план курса
   CoursePlan? _coursePlan;
@@ -1523,6 +1540,66 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _ensureInterestsCollected() async {
+    if (_userInterests.isNotEmpty || _interestsAsked) return;
+
+    final selected = await showDialog<List<String>>(
+      context: context,
+      builder: (ctx) {
+        final chosen = <String>{..._userInterests};
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              title: const Text('Что вам интересно?'),
+              content: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final interest in _interestOptions)
+                      FilterChip(
+                        label: Text(interest),
+                        selected: chosen.contains(interest),
+                        onSelected: (val) {
+                          setStateDialog(() {
+                            if (val) {
+                              chosen.add(interest);
+                            } else {
+                              chosen.remove(interest);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(<String>[]),
+                  child: const Text('Пропустить'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(chosen.toList()),
+                  child: const Text('Сохранить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    setState(() {
+      _interestsAsked = true;
+      if (selected != null) {
+        _userInterests
+          ..clear()
+          ..addAll(selected);
+      }
+    });
+  }
+
 Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
   if (_isLoadingCourse || _coursePlan != null) return;
 
@@ -1532,6 +1609,8 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
   });
 
   try {
+    await _ensureInterestsCollected();
+
     final uri = Uri.parse('http://144.172.116.101:8000/generate_course_plan');
 
     final gender =
@@ -1545,6 +1624,7 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
       "gender": gender,
       "goals":
           "Improve ${widget.language} through conversation and vocabulary.",
+      "interests": _userInterests,
     });
 
     final response = await http.post(
@@ -3154,6 +3234,7 @@ Widget _buildCourseLevelNode({
                                   lesson: lesson,
                                   grammarTopics: level.targetGrammar,
                                   vocabTopics: level.targetVocab,
+                                  userInterests: _userInterests,
                                   onComplete: (total, done) {
                                     setState(() {
                                       _completedLessons.add(lessonKey);
@@ -4650,6 +4731,7 @@ class LessonScreen extends StatefulWidget {
   final LessonPlan lesson;
   final List<String> grammarTopics;
   final List<String> vocabTopics;
+  final List<String> userInterests;
   final void Function(int total, int completed)? onComplete;
 
   const LessonScreen({
@@ -4659,6 +4741,7 @@ class LessonScreen extends StatefulWidget {
     required this.lesson,
     required this.grammarTopics,
     required this.vocabTopics,
+    this.userInterests = const [],
     this.onComplete,
   });
 
@@ -4777,6 +4860,7 @@ class _LessonScreenState extends State<LessonScreen> {
         "lesson_title": widget.lesson.title,
         "grammar_topics": widget.grammarTopics,
         "vocab_topics": widget.vocabTopics,
+        "interests": widget.userInterests,
       });
 
       final response = await http.post(
@@ -4936,6 +5020,16 @@ class _LessonScreenState extends State<LessonScreen> {
   const SizedBox(height: 8),
 
   // Текст задания (question)
+  if (ex.instruction != null && ex.instruction!.trim().isNotEmpty) ...[
+    Text(
+      ex.instruction!,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.grey.shade700,
+            fontStyle: FontStyle.italic,
+          ),
+    ),
+    const SizedBox(height: 6),
+  ],
   Text(
     ex.question,
     style: Theme.of(context)
