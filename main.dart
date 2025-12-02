@@ -1409,7 +1409,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _ => 'default',
     };
 
-    final frameCount = (folder == 'default') ? 450 : 419;
+    final frameCount = (folder == 'default') ? 419 : 419;
 
     return List.generate(frameCount, (i) {
       final n = i + 1;
@@ -1933,62 +1933,67 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
                 children: [
                   Expanded(child: Text(word)),
                   // 🔊 КНОПКА ОЗВУЧКИ
-                  IconButton(
-                    tooltip: audioFilePath != null
-                        ? 'Произнести слово'
-                        : 'Запросить аудио',
-                    icon: isAudioLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            audioFilePath != null
-                                ? Icons.volume_up
-                                : Icons.download,
-                          ),
-                    onPressed: () async {
-                      if (isAudioLoading) return;
-                      if (audioFilePath != null) {
-                        try {
-                          await _audioPlayer.stop();
-                          await _audioPlayer.play(
-                            DeviceFileSource(audioFilePath!),
-                          );
-                        } catch (e) {
-                          debugPrint('AUDIO PLAY ERROR: $e');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Не удалось воспроизвести аудио'),
-                            ),
-                          );
-                        }
-                        return;
-                      }
+                  // 🔊 КНОПКА ОЗВУЧКИ
+IconButton(
+  tooltip: 'Произнести слово',
+  icon: isAudioLoading
+      ? const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        )
+      : const Icon(Icons.volume_up),
+  onPressed: () async {
+    if (isAudioLoading) return;
 
-                      dialogSetState(() {
-                        isAudioLoading = true;
-                      });
+    // показываем спиннер
+    dialogSetState(() {
+      isAudioLoading = true;
+    });
 
-                      final fetchedPath = await _fetchWordAudio(word);
+    // если аудио ещё нет — тянем с бэка
+    if (audioFilePath == null) {
+      final fetchedPath = await _fetchWordAudio(word);
 
-                      if (!context.mounted) return;
+      if (!context.mounted) return;
 
-                      dialogSetState(() {
-                        isAudioLoading = false;
-                        audioFilePath = fetchedPath;
-                      });
+      dialogSetState(() {
+        isAudioLoading = false;
+        audioFilePath = fetchedPath;
+      });
 
-                      if (fetchedPath == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Аудио недоступно, попробуйте позже'),
-                          ),
-                        );
-                      }
-                    },
-                  ),
+      if (fetchedPath == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Аудио недоступно, попробуйте позже'),
+          ),
+        );
+        return;
+      }
+    } else {
+      // если файл уже был — просто убираем спиннер
+      dialogSetState(() {
+        isAudioLoading = false;
+      });
+    }
+
+    // На этом этапе audioFilePath точно не null – пробуем воспроизвести
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(
+        DeviceFileSource(audioFilePath!),
+      );
+    } catch (e) {
+      debugPrint('AUDIO PLAY ERROR: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось воспроизвести аудио'),
+        ),
+      );
+    }
+  },
+),
+
                   IconButton(
                     tooltip: isSaved
                         ? 'Удалить из словаря'
@@ -2793,14 +2798,15 @@ Future<void> _loadCoursePlan({String? overrideLevelHint}) async {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     _CoursePill(
                       icon: Icons.psychology_alt_outlined,
                       label: 'Учитываем вводный тест',
                       color: look.accentColor,
                     ),
-                    const SizedBox(width: 8),
                     _CoursePill(
                       icon: Icons.menu_book_outlined,
                       label: 'Грамматика + словарь',
@@ -4679,6 +4685,7 @@ class _LessonScreenState extends State<LessonScreen> {
 
   /// Какие вопросы уже проверены
   final Set<int> _checked = {};
+  final Map<int, bool> _results = {};
 
   bool _listsEqual(List<String> a, List<String> b) {
     if (a.length != b.length) return false;
@@ -4688,6 +4695,60 @@ class _LessonScreenState extends State<LessonScreen> {
     return true;
   }
 
+  String _normalizeText(String value) {
+    final trimmed = value.trim().toLowerCase();
+    final withoutPunctuation = trimmed.replaceAll(RegExp(r'[.,!?;:]+$'), '');
+    return withoutPunctuation.replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool _isAnswerCorrect(LessonExercise ex, int index) {
+    switch (ex.type) {
+      case 'multiple_choice':
+        final selected = _selectedOption[index];
+        return selected != null && selected == ex.correctIndex;
+      case 'translate_sentence':
+      case 'fill_in_blank':
+        final user = _textAnswers[index] ?? '';
+        final correct = ex.correctAnswer ?? '';
+        if (user.trim().isEmpty || correct.trim().isEmpty) return false;
+        return _normalizeText(user) == _normalizeText(correct);
+      case 'reorder_words':
+        final selectedOrder = _reorderSelected[index] ?? const <String>[];
+        final correctOrder = ex.reorderCorrect ?? const <String>[];
+        if (selectedOrder.isEmpty || correctOrder.isEmpty) return false;
+        final normalizedSelected =
+            selectedOrder.map((e) => e.trim()).toList(growable: false);
+        final normalizedCorrect =
+            correctOrder.map((e) => e.trim()).toList(growable: false);
+        return _listsEqual(normalizedSelected, normalizedCorrect);
+      default:
+        return false;
+    }
+  }
+
+  String? _correctAnswerText(LessonExercise ex) {
+    switch (ex.type) {
+      case 'multiple_choice':
+        if (ex.correctIndex != null &&
+            ex.options != null &&
+            ex.correctIndex! >= 0 &&
+            ex.correctIndex! < ex.options!.length) {
+          return ex.options![ex.correctIndex!];
+        }
+        return null;
+      case 'translate_sentence':
+      case 'fill_in_blank':
+        return ex.correctAnswer?.trim().isEmpty == true
+            ? null
+            : ex.correctAnswer;
+      case 'reorder_words':
+        final correct = ex.reorderCorrect;
+        if (correct == null || correct.isEmpty) return null;
+        return correct.join(' ');
+      default:
+        return null;
+    }
+  }
 
   @override
   void initState() {
@@ -4768,6 +4829,7 @@ class _LessonScreenState extends State<LessonScreen> {
 
   setState(() {
     _checked.add(index);
+    _results[index] = _isAnswerCorrect(ex, index);
   });
 }
 
@@ -4828,116 +4890,226 @@ class _LessonScreenState extends State<LessonScreen> {
                               final ex = content.exercises[exIndex];
                               final selected = _selectedOption[exIndex];
                               final checked = _checked.contains(exIndex);
-                              final isCorrect = checked &&
-                                  selected != null &&
-                                  selected == ex.correctIndex;
+                              final isCorrect =
+                                  checked && (_results[exIndex] ?? false);
 
                               return AnimatedPadding(
-                                duration: const Duration(milliseconds: 220),
-                                padding: const EdgeInsets.all(16),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeInOut,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Theme.of(context)
-                                            .colorScheme
-                                            .primary
-                                            .withOpacity(0.06),
-                                        Colors.white,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(18),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.06),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Упражнение ${exIndex + 1}/${content.exercises.length}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelMedium
-                                            ?.copyWith(
-                                              color: Colors.grey.shade700,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        ex.question,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      if (ex.type == 'multiple_choice' && ex.options != null) ...[
-  ...List.generate(ex.options!.length, (i) {
-    return RadioListTile<int>(
-      value: i,
-      groupValue: selected,
-      activeColor: Theme.of(context).colorScheme.primary,
-      title: Text(ex.options![i]),
-      onChanged: (val) {
+  duration: const Duration(milliseconds: 220),
+  padding: const EdgeInsets.all(16),
+  child: AnimatedContainer(
+    duration: const Duration(milliseconds: 220),
+    curve: Curves.easeInOut,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Theme.of(context).colorScheme.primary.withOpacity(0.06),
+          Colors.white,
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.06),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    ),
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+  // Номер упражнения
+  Text(
+    'Упражнение ${exIndex + 1}/${content.exercises.length}',
+    style: Theme.of(context)
+        .textTheme
+        .labelMedium
+        ?.copyWith(
+          color: Colors.grey.shade700,
+          fontWeight: FontWeight.w600,
+        ),
+  ),
+
+  const SizedBox(height: 8),
+
+  // Текст задания (question)
+  Text(
+    ex.question,
+    style: Theme.of(context)
+        .textTheme
+        .titleMedium
+        ?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+  ),
+
+  // Если это fill_in_blank — показываем предложение с пропуском
+  if (ex.type == 'fill_in_blank' && ex.sentenceWithGap != null) ...[
+    const SizedBox(height: 8),
+    Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        ex.sentenceWithGap!,
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+    ),
+  ],
+
+  const SizedBox(height: 12),
+
+  // --- тело упражнения в зависимости от типа ---
+  if (ex.type == 'multiple_choice' && ex.options != null) ...[
+    ...List.generate(ex.options!.length, (i) {
+      return RadioListTile<int>(
+        value: i,
+        groupValue: selected,
+        activeColor: Theme.of(context).colorScheme.primary,
+        title: Text(ex.options![i]),
+        onChanged: (val) {
+          setState(() {
+            _selectedOption[exIndex] = val!;
+          });
+        },
+      );
+    }),
+  ]
+
+  // Перевод предложения
+  else if (ex.type == 'translate_sentence') ...[
+    TextFormField(
+      initialValue: _textAnswers[exIndex] ?? '',
+      maxLines: 3,
+      decoration: const InputDecoration(
+        hintText: 'Введите перевод',
+        border: OutlineInputBorder(),
+        filled: true,
+      ),
+      onChanged: (value) {
         setState(() {
-          _selectedOption[exIndex] = val!;
+          _textAnswers[exIndex] = value;
         });
       },
-    );
-  }),
+    ),
+  ]
+
+  // Заполни пропуск правильной формой глагола
+  else if (ex.type == 'fill_in_blank') ...[
+    TextFormField(
+      initialValue: _textAnswers[exIndex] ?? '',
+      maxLines: 1,
+      decoration: const InputDecoration(
+        hintText: 'Введите пропущенное слово',
+        border: OutlineInputBorder(),
+        filled: true,
+      ),
+      onChanged: (value) {
+        setState(() {
+          _textAnswers[exIndex] = value;
+        });
+      },
+    ),
+  ]
+
+  // Перестановка слов
+  else if (ex.type == 'reorder_words' && ex.reorderWords != null) ...[
+    Text(
+      'Нажмите по словам в нужном порядке:',
+      style: Theme.of(context)
+          .textTheme
+          .bodySmall
+          ?.copyWith(
+            color: Colors.grey,
+          ),
+    ),
+    const SizedBox(height: 8),
+    Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: ex.reorderWords!.map((word) {
+        final current = _reorderSelected[exIndex] ?? <String>[];
+        final isSelected = current.contains(word);
+
+        return ChoiceChip(
+          label: Text(word),
+          selected: isSelected,
+          onSelected: (_) {
+            setState(() {
+              final updated = List<String>.from(current);
+              if (isSelected) {
+                updated.remove(word);
+              } else {
+                updated.add(word);
+              }
+              _reorderSelected[exIndex] = updated;
+            });
+          },
+        );
+      }).toList(),
+    ),
+    if ((_reorderSelected[exIndex] ?? const <String>[])
+        .isNotEmpty) ...[
+      const SizedBox(height: 8),
+      Text(
+        (_reorderSelected[exIndex] ?? const <String>[])
+            .join(' '),
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+    ],
+  ],
+
+  const SizedBox(height: 12),
+
+  Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      ElevatedButton.icon(
+        onPressed: () => _checkQuestion(exIndex),
+        icon: const Icon(Icons.check),
+        label: const Text('Проверить'),
+      ),
+      if (checked)
+        Icon(
+          isCorrect ? Icons.check_circle : Icons.cancel_outlined,
+          color: isCorrect ? Colors.green : Colors.red,
+        ),
+    ],
+  ),
+
+  if (checked) ...[
+    const SizedBox(height: 10),
+    Text(
+      ex.explanation,
+      style: Theme.of(context)
+          .textTheme
+          .bodySmall
+          ?.copyWith(
+            color: Colors.grey.shade700,
+          ),
+    ),
+    if (!isCorrect) ...[
+      const SizedBox(height: 6),
+      Text(
+        'Правильный ответ: ${_correctAnswerText(ex) ?? '—'}',
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: Colors.grey.shade800, fontWeight: FontWeight.w600),
+      ),
+    ],
+  ],
 ],
 
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          ElevatedButton.icon(
-                                            onPressed: () =>
-                                                _checkQuestion(exIndex),
-                                            icon: const Icon(Icons.check),
-                                            label: const Text('Проверить'),
-                                          ),
-                                          if (checked)
-                                            Icon(
-                                              isCorrect
-                                                  ? Icons.check_circle
-                                                  : Icons.cancel_outlined,
-                                              color: isCorrect
-                                                  ? Colors.green
-                                                  : Colors.red,
-                                            ),
-                                        ],
-                                      ),
-                                      if (checked) ...[
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          ex.explanation,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: Colors.grey.shade700,
-                                              ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              );
+    ),
+  ),
+);
+
                             },
                           ),
                         ),
@@ -5025,11 +5197,13 @@ class _LessonIntroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.14),
+            theme.colorScheme.primary.withOpacity(0.12),
             Colors.white,
           ],
           begin: Alignment.topLeft,
@@ -5038,58 +5212,49 @@ class _LessonIntroCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.85),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.flag_circle_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  Text('Уровень: $level'),
-                ],
-              ),
-            ],
+          Text(
+            'Урок по уровню $level',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(
             description,
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: theme.textTheme.bodyMedium,
           ),
-          const Spacer(),
+          const SizedBox(height: 16),
           Row(
-            children: const [
-              Icon(Icons.swipe_left, size: 16, color: Colors.grey),
-              SizedBox(width: 6),
-              Text(
-                'Листайте, чтобы перейти к упражнениям',
-                style: TextStyle(color: Colors.grey),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.lightbulb_outline, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Сначала прочитай описание урока, потом листай вправо к заданиям.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -5098,6 +5263,7 @@ class _LessonIntroCard extends StatelessWidget {
     );
   }
 }
+
 
 class _LessonPager extends StatelessWidget {
   final int currentPage;
