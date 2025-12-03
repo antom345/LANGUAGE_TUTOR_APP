@@ -67,12 +67,16 @@ class LessonPlan {
   final String title;
   final String type;
   final String description;
+  final List<String> grammarTopics;
+  final List<String> vocabTopics;
 
   LessonPlan({
     required this.id,
     required this.title,
     required this.type,
     required this.description,
+    required this.grammarTopics,
+    required this.vocabTopics,
   });
 
   factory LessonPlan.fromJson(Map<String, dynamic> json) {
@@ -81,6 +85,11 @@ class LessonPlan {
       title: json['title'] as String,
       type: json['type'] as String,
       description: json['description'] as String,
+      grammarTopics:
+          (json['grammar_topics'] as List<dynamic>?)?.cast<String>() ??
+              const [],
+      vocabTopics:
+          (json['vocab_topics'] as List<dynamic>?)?.cast<String>() ?? const [],
     );
   }
 }
@@ -3232,8 +3241,8 @@ Widget _buildCourseLevelNode({
                                   language: widget.language,
                                   level: widget.level,
                                   lesson: lesson,
-                                  grammarTopics: level.targetGrammar,
-                                  vocabTopics: level.targetVocab,
+                                  grammarTopics: lesson.grammarTopics,
+                                  vocabTopics: lesson.vocabTopics,
                                   userInterests: _userInterests,
                                   onComplete: (total, done) {
                                     setState(() {
@@ -4764,7 +4773,7 @@ class _LessonScreenState extends State<LessonScreen> {
   final Map<int, String> _textAnswers = {};
 
   /// Для reorder_words: порядок, который выбрал пользователь
-  final Map<int, List<String>> _reorderSelected = {};
+  final Map<int, List<int>> _reorderSelected = {};
 
   /// Какие вопросы уже проверены
   final Set<int> _checked = {};
@@ -4778,10 +4787,32 @@ class _LessonScreenState extends State<LessonScreen> {
     return true;
   }
 
-  String _normalizeText(String value) {
-    final trimmed = value.trim().toLowerCase();
-    final withoutPunctuation = trimmed.replaceAll(RegExp(r'[.,!?;:]+$'), '');
-    return withoutPunctuation.replaceAll(RegExp(r'\s+'), ' ');
+  String _normalizeAnswer(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll(RegExp(r"[’']"), "")
+        .replaceAll(RegExp(r"[.?!,]"), "")
+        .replaceAll(RegExp(r"\s+"), " ")
+        .trim();
+  }
+
+  String _buildSentenceWithGap(LessonExercise ex) {
+    if (ex.sentenceWithGap != null && ex.sentenceWithGap!.trim().isNotEmpty) {
+      return ex.sentenceWithGap!;
+    }
+    final correct = ex.correctAnswer ?? '';
+    if (correct.isEmpty) return ex.question;
+    final regex =
+        RegExp(r"\b" + RegExp.escape(correct) + r"\b", caseSensitive: false);
+    return ex.question.replaceFirst(regex, "___");
+  }
+
+  String _normalizeSentence(String s) {
+    return s
+        .trim()
+        .replaceAll(RegExp(r"[.?!]$"), "")
+        .replaceAll(RegExp(r"\s+"), " ")
+        .toLowerCase();
   }
 
   bool _isAnswerCorrect(LessonExercise ex, int index) {
@@ -4794,16 +4825,29 @@ class _LessonScreenState extends State<LessonScreen> {
         final user = _textAnswers[index] ?? '';
         final correct = ex.correctAnswer ?? '';
         if (user.trim().isEmpty || correct.trim().isEmpty) return false;
-        return _normalizeText(user) == _normalizeText(correct);
+        return _normalizeAnswer(user) == _normalizeAnswer(correct);
       case 'reorder_words':
-        final selectedOrder = _reorderSelected[index] ?? const <String>[];
+        final words = ex.reorderWords ?? const <String>[];
+        final selectedIdx = _reorderSelected[index] ?? const <int>[];
+        if (selectedIdx.isEmpty) return false;
+        final userSentence = selectedIdx
+            .where((i) => i >= 0 && i < words.length)
+            .map((i) => words[i])
+            .join(' ');
+
+        String? correctSentence;
         final correctOrder = ex.reorderCorrect ?? const <String>[];
-        if (selectedOrder.isEmpty || correctOrder.isEmpty) return false;
-        final normalizedSelected =
-            selectedOrder.map((e) => e.trim()).toList(growable: false);
-        final normalizedCorrect =
-            correctOrder.map((e) => e.trim()).toList(growable: false);
-        return _listsEqual(normalizedSelected, normalizedCorrect);
+        if (correctOrder.isNotEmpty) {
+          correctSentence = correctOrder.join(' ');
+        } else if ((ex.correctAnswer ?? '').trim().isNotEmpty) {
+          correctSentence = ex.correctAnswer!;
+        }
+        if (correctSentence == null || correctSentence.trim().isEmpty) {
+          return false;
+        }
+
+        return _normalizeSentence(userSentence) ==
+            _normalizeSentence(correctSentence);
       default:
         return false;
     }
@@ -4904,7 +4948,7 @@ class _LessonScreenState extends State<LessonScreen> {
       if (ans.isEmpty) return;
       break;
     case 'reorder_words':
-      final order = _reorderSelected[index] ?? const <String>[];
+      final order = _reorderSelected[index] ?? const <int>[];
       if (order.isEmpty) return;
       break;
     default:
@@ -5050,7 +5094,7 @@ class _LessonScreenState extends State<LessonScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        ex.sentenceWithGap!,
+        _buildSentenceWithGap(ex),
         style: Theme.of(context).textTheme.bodyMedium,
       ),
     ),
@@ -5109,6 +5153,16 @@ class _LessonScreenState extends State<LessonScreen> {
         });
       },
     ),
+    if (ex.explanation.trim().isNotEmpty) ...[
+      const SizedBox(height: 8),
+      Text(
+        ex.explanation,
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: Colors.grey.shade700),
+      ),
+    ],
   ]
 
   // Перестановка слов
@@ -5126,32 +5180,34 @@ class _LessonScreenState extends State<LessonScreen> {
     Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: ex.reorderWords!.map((word) {
-        final current = _reorderSelected[exIndex] ?? <String>[];
-        final isSelected = current.contains(word);
+      children: List.generate(ex.reorderWords!.length, (i) {
+        final current = _reorderSelected[exIndex] ?? <int>[];
+        final isSelected = current.contains(i);
+        final word = ex.reorderWords![i];
 
         return ChoiceChip(
           label: Text(word),
           selected: isSelected,
           onSelected: (_) {
             setState(() {
-              final updated = List<String>.from(current);
+              final updated = List<int>.from(current);
               if (isSelected) {
-                updated.remove(word);
-              } else {
-                updated.add(word);
+                updated.remove(i);
+              } else if (!updated.contains(i)) {
+                updated.add(i);
               }
               _reorderSelected[exIndex] = updated;
             });
           },
         );
-      }).toList(),
+      }),
     ),
-    if ((_reorderSelected[exIndex] ?? const <String>[])
+    if ((_reorderSelected[exIndex] ?? const <int>[])
         .isNotEmpty) ...[
       const SizedBox(height: 8),
       Text(
-        (_reorderSelected[exIndex] ?? const <String>[])
+        (_reorderSelected[exIndex] ?? const <int>[])
+            .map((i) => ex.reorderWords![i])
             .join(' '),
         style: Theme.of(context).textTheme.bodyMedium,
       ),
