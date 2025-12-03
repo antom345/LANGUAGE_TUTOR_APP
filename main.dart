@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
@@ -2941,94 +2943,34 @@ IconButton(
   // 3) Курс уже есть – показываем «дорожку уровней» как в Duolingo
   final plan = _coursePlan!;
   final levels = plan.levels;
+  final List<_MapLessonPoint> mapLessons = [];
+  for (final level in levels) {
+    for (final lesson in level.lessons) {
+      mapLessons.add(_MapLessonPoint(level: level, lesson: lesson));
+    }
+  }
+  final takeCount = math.min(mapLessons.length, _lessonPositions.length);
+  final firstFive = mapLessons.take(takeCount).toList(growable: false);
+  final positionedLessons = <_MapLessonPoint>[];
+  for (var i = 0; i < firstFive.length; i++) {
+    positionedLessons.add(
+      firstFive[i].copyWithPosition(_lessonPositions[i]),
+    );
+  }
 
-  return Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Colors.white,
-          lighten(look.primaryColor, 0.10),
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-    ),
-    child: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Шапка курса
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              CharacterAvatar(look: look, size: 52),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Курс ${plan.language}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Общий уровень: ${plan.overallLevel}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.grey.shade700),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.star, size: 16, color: look.accentColor),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${levels.length} уровней • ${levels.fold<int>(0, (sum, l) => sum + l.lessons.length)} уроков',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.grey.shade700),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-                    ),
-                    const SizedBox(height: 20),
-
-        // Список уровней по «дорожке»
-        for (int i = 0; i < levels.length; i++) ...[
-          _buildCourseLevelNode(
-            context: context,
-            level: levels[i],
-            index: i,
-            total: levels.length,
-            look: look,
-            completedLessons: _completedLessons,
-          ),
-          const SizedBox(height: 10),
-        ],
-      ],
-    ),
+  return CourseMapScreen(
+    language: plan.language,
+    userLevel: widget.level,
+    plan: plan,
+    look: look,
+    lessons: positionedLessons,
+    completedLessons: _completedLessons,
+    userInterests: _userInterests,
+    onLessonCompleted: (lessonKey) {
+      setState(() {
+        _completedLessons.add(lessonKey);
+      });
+    },
   );
 }
 
@@ -3373,6 +3315,468 @@ Widget _buildCourseLevelNode({
         ],
       ),
     );
+  }
+}
+
+class _MapPosition {
+  final double x; // 0..1
+  final double y; // 0..1
+  const _MapPosition(this.x, this.y);
+}
+
+class _MapLessonPoint {
+  final CourseLevelPlan level;
+  final LessonPlan lesson;
+  final _MapPosition? position;
+
+  const _MapLessonPoint({
+    required this.level,
+    required this.lesson,
+    this.position,
+  });
+
+  _MapLessonPoint copyWithPosition(_MapPosition pos) {
+    return _MapLessonPoint(
+      level: level,
+      lesson: lesson,
+      position: pos,
+    );
+  }
+}
+
+enum MapCharacterMood { idle, walking, happy, sad }
+
+const List<_MapPosition> _lessonPositions = <_MapPosition>[
+  _MapPosition(0.50, 0.88),
+  _MapPosition(0.55, 0.70),
+  _MapPosition(0.52, 0.54),
+  _MapPosition(0.50, 0.38),
+  _MapPosition(0.48, 0.20),
+];
+
+const _MapPosition _initialCharacterPosition = _MapPosition(0.5, 0.92);
+
+class CourseMapScreen extends StatefulWidget {
+  final String language;
+  final String userLevel;
+  final CoursePlan plan;
+  final CharacterLook look;
+  final List<_MapLessonPoint> lessons;
+  final Set<String> completedLessons;
+  final List<String> userInterests;
+  final void Function(String lessonKey) onLessonCompleted;
+
+  const CourseMapScreen({
+    super.key,
+    required this.language,
+    required this.userLevel,
+    required this.plan,
+    required this.look,
+    required this.lessons,
+    required this.completedLessons,
+    required this.userInterests,
+    required this.onLessonCompleted,
+  });
+
+  @override
+  State<CourseMapScreen> createState() => _CourseMapScreenState();
+}
+
+class _CourseMapScreenState extends State<CourseMapScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _moveController;
+  Animation<Offset>? _moveAnimation;
+  _MapPosition _characterPosition = _initialCharacterPosition;
+  _MapLessonPoint? _pendingLesson;
+  bool _isMoving = false;
+
+  late String _folder;
+  List<String> _idleFrames = const [];
+  List<String> _walkFrames = const [];
+  List<String> _happyFrames = const [];
+  List<String> _sadFrames = const [];
+  Timer? _frameTimer;
+  Timer? _happyTimer;
+  int _frameIndex = 0;
+  MapCharacterMood _characterMood = MapCharacterMood.idle;
+
+  late List<_MapLessonPoint> _lessonPoints;
+
+  @override
+  void initState() {
+    super.initState();
+    _folder = _mapCharacterFolder(widget.language);
+    _lessonPoints = _applyLessonPositions(widget.lessons);
+    _moveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 780),
+    );
+    _moveController.addListener(() {
+      if (_moveAnimation == null) return;
+      final value = _moveAnimation!.value;
+      setState(() {
+        _characterPosition = _MapPosition(value.dx, value.dy);
+      });
+    });
+    _moveController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _finishMovement();
+      }
+    });
+    _loadAllFrames();
+    _startFrameTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant CourseMapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.language != widget.language) {
+      _folder = _mapCharacterFolder(widget.language);
+      _loadAllFrames();
+    }
+    if (oldWidget.lessons != widget.lessons) {
+      setState(() {
+        _lessonPoints = _applyLessonPositions(widget.lessons);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _frameTimer?.cancel();
+    _happyTimer?.cancel();
+    _moveController.dispose();
+    super.dispose();
+  }
+
+  List<_MapLessonPoint> _applyLessonPositions(List<_MapLessonPoint> source) {
+    final result = <_MapLessonPoint>[];
+    for (var i = 0; i < source.length && i < _lessonPositions.length; i++) {
+      result.add(source[i].copyWithPosition(_lessonPositions[i]));
+    }
+    return result;
+  }
+
+  Future<void> _loadAllFrames() async {
+    final folder = _folder;
+    final results = await Future.wait([
+      _loadFrames(folder, 'idle'),
+      _loadFrames(folder, 'walk'),
+      _loadFrames(folder, 'happy'),
+      _loadFrames(folder, 'sad'),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _idleFrames = results[0];
+      _walkFrames = results[1];
+      _happyFrames = results[2];
+      _sadFrames = results[3];
+      _frameIndex = 0;
+    });
+  }
+
+  Future<List<String>> _loadFrames(String folder, String state) async {
+    final manifestContent = await rootBundle.loadString('AssetManifest.json');
+    final Map<String, dynamic> manifestMap = jsonDecode(manifestContent);
+    final prefix = 'assets/anim_map/$folder/$state/';
+    final frames = manifestMap.keys
+        .where((k) => k.startsWith(prefix) && k.endsWith('.webp'))
+        .toList()
+      ..sort();
+    return frames;
+  }
+
+  void _startFrameTimer() {
+    _frameTimer?.cancel();
+    _frameTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      final frames = _currentFrames();
+      if (frames.isEmpty || !mounted) return;
+      setState(() {
+        _frameIndex = (_frameIndex + 1) % frames.length;
+      });
+    });
+  }
+
+  List<String> _currentFrames() {
+    switch (_characterMood) {
+      case MapCharacterMood.walking:
+        return _walkFrames.isNotEmpty ? _walkFrames : _idleFrames;
+      case MapCharacterMood.happy:
+        return _happyFrames.isNotEmpty ? _happyFrames : _idleFrames;
+      case MapCharacterMood.sad:
+        return _sadFrames.isNotEmpty ? _sadFrames : _idleFrames;
+      case MapCharacterMood.idle:
+      default:
+        return _idleFrames;
+    }
+  }
+
+  String? get _currentFramePath {
+    final frames = _currentFrames();
+    if (frames.isEmpty) return null;
+    return frames[_frameIndex % frames.length];
+  }
+
+  void _setMood(MapCharacterMood mood) {
+    if (_characterMood == mood) return;
+    if (!mounted) return;
+    setState(() {
+      _characterMood = mood;
+      _frameIndex = 0;
+    });
+    if (mood != MapCharacterMood.happy) {
+      _happyTimer?.cancel();
+    }
+  }
+
+  void _moveToLesson(_MapLessonPoint point) {
+    if (_isMoving || point.position == null) return;
+    final begin = Offset(_characterPosition.x, _characterPosition.y);
+    final end = Offset(point.position!.x, point.position!.y);
+    _moveAnimation = Tween<Offset>(begin: begin, end: end).animate(
+      CurvedAnimation(parent: _moveController, curve: Curves.easeInOut),
+    );
+    _pendingLesson = point;
+    _isMoving = true;
+    _setMood(MapCharacterMood.walking);
+    _moveController.forward(from: 0);
+  }
+
+  void _finishMovement() {
+    if (!mounted) return;
+    setState(() {
+      _isMoving = false;
+      if (_pendingLesson?.position != null) {
+        _characterPosition = _pendingLesson!.position!;
+      }
+    });
+    _setMood(MapCharacterMood.idle);
+    final pending = _pendingLesson;
+    _pendingLesson = null;
+    if (pending != null) {
+      _openLesson(pending);
+    }
+  }
+
+  String _lessonKey(_MapLessonPoint point) {
+    return '${point.level.title}-${point.lesson.title}';
+  }
+
+  Future<void> _openLesson(_MapLessonPoint point) async {
+    final lessonKey = _lessonKey(point);
+    var completedLesson = false;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LessonScreen(
+          language: widget.language,
+          level: widget.userLevel,
+          lesson: point.lesson,
+          grammarTopics: point.lesson.grammarTopics,
+          vocabTopics: point.lesson.vocabTopics,
+          userInterests: widget.userInterests,
+          onComplete: (total, done) {
+            widget.onLessonCompleted(lessonKey);
+            completedLesson = true;
+          },
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (completedLesson) {
+      _showHappy();
+    } else {
+      _setMood(MapCharacterMood.idle);
+    }
+  }
+
+  void _showHappy() {
+    _setMood(MapCharacterMood.happy);
+    _happyTimer?.cancel();
+    _happyTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      _setMood(MapCharacterMood.idle);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = math.max(constraints.maxHeight, constraints.maxWidth * 1.9);
+        final width = constraints.maxWidth;
+        final framePath = _currentFramePath;
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: SizedBox(
+            height: height,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/map/background/map_vertical.webp',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: _CourseMapHeader(plan: widget.plan, look: widget.look),
+                ),
+                for (final point in _lessonPoints)
+                  _buildLessonSpot(point, width, height),
+                if (framePath != null)
+                  Positioned(
+                    left: width * _characterPosition.x - 32,
+                    top: height * _characterPosition.y - 32,
+                    child: SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Image.asset(
+                        framePath,
+                        gaplessPlayback: true,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLessonSpot(
+    _MapLessonPoint point,
+    double width,
+    double height,
+  ) {
+    final pos = point.position!;
+    final left = pos.x * width - 30;
+    final top = pos.y * height - 36;
+    final lessonKey = _lessonKey(point);
+    final completed = widget.completedLessons.contains(lessonKey);
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => _moveToLesson(point),
+        child: SizedBox(
+          width: 80,
+          height: 80,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: completed ? 52 : 48,
+                height: completed ? 52 : 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: completed
+                        ? Colors.greenAccent
+                        : widget.look.accentColor.withOpacity(0.6),
+                    width: 2,
+                  ),
+                ),
+              ),
+              if (completed)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(
+                    Icons.check_circle,
+                    size: 20,
+                    color: Colors.greenAccent,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CourseMapHeader extends StatelessWidget {
+  final CoursePlan plan;
+  final CharacterLook look;
+
+  const _CourseMapHeader({required this.plan, required this.look});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CharacterAvatar(look: look, size: 52),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Курс ${plan.language}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Общий уровень: ${plan.overallLevel}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _mapCharacterFolder(String language) {
+  switch (language) {
+    case 'French':
+      return 'french';
+    case 'German':
+      return 'german';
+    case 'Italian':
+      return 'italian';
+    case 'Korean':
+      return 'korean';
+    case 'Spanish':
+      return 'spanish';
+    default:
+      return 'default';
   }
 }
 
